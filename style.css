@@ -111,9 +111,15 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
   .capability-grid { grid-template-columns: 1fr; }
   .credentials { grid-template-columns: 1fr; }
   .artist-feature { grid-template-columns: 1fr; }
-  .artist-photo { min-height: 265px; }
-  .audio-gallery img { height: 225px; }
-  .page-intro { padding: 4.5rem 0 3.5rem; }
+  .artist-copy { padding: 1.5rem; }
+  .artist-logo { height: 72px; margin-bottom: 1rem; }
+  .artist-photo { min-height: 210px; }
+  .audio-gallery { gap: 0.65rem; margin-top: 1rem; }
+  .audio-gallery img { height: 160px; }
+  .audio-gallery figcaption { display: none; }
+  .spotify-embed { margin-top: 1rem; }
+  .spotify-embed iframe { height: 330px; }
+  .page-intro { padding: 3.5rem 0 2.75rem; }
   .site-footer { flex-direction: column; gap: 0.45rem; }
 }
 
