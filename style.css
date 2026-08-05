@@ -72,7 +72,7 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .audio-note > p:last-child, .callout > p:last-child { color: var(--muted); max-width: 700px; }
 .artist-feature { align-items: stretch; background: var(--surface); border: 1px solid var(--border); display: grid; grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.25fr); max-width: 950px; overflow: hidden; }
 .artist-copy { display: flex; flex-direction: column; justify-content: center; padding: 2.25rem; }
-.artist-logo { height: 96px; margin: 0 0 1.5rem; object-fit: cover; object-position: center 56%; width: 100%; }
+.artist-logo { display: block; height: auto; margin: 0 0 1.5rem; width: 100%; }
 .artist-copy h2 { font-size: clamp(1.7rem, 3vw, 2.5rem); }
 .artist-copy p { color: var(--muted); margin-bottom: 0; }
 .artist-photo { margin: 0; min-height: 340px; position: relative; }
@@ -85,6 +85,7 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .playlist-intro { color: var(--muted); max-width: 700px; }
 .spotify-embed { border: 1px solid var(--border); border-radius: 12px; margin-top: 1.5rem; max-width: 800px; overflow: hidden; }
 .spotify-embed iframe { border: 0; display: block; }
+.spotify-link { display: inline-block; font-size: 0.9rem; margin-top: 0.8rem; }
 .callout, .empty-state { background: var(--surface); border: 1px solid var(--border); margin-bottom: 2rem; padding: 2rem; }
 .callout h2, .empty-state h2 { font-size: clamp(1.5rem, 3vw, 2.15rem); }
 .project-card { background: var(--surface); border: 1px solid var(--border); max-width: 800px; padding: 2rem; }
@@ -113,13 +114,13 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
   .credentials { grid-template-columns: 1fr; }
   .artist-feature { grid-template-columns: 1fr; }
   .artist-copy { padding: 1.5rem; }
-  .artist-logo { align-self: center; height: 72px; margin-bottom: 1rem; width: 84%; }
+  .artist-logo { align-self: center; height: auto; margin-bottom: 1rem; width: 84%; }
   .artist-photo { min-height: 210px; }
   .audio-gallery { gap: 0.65rem; margin-top: 1rem; }
   .audio-gallery img { height: 160px; }
   .audio-gallery figcaption { display: none; }
   .spotify-embed { margin-top: 1rem; }
-  .spotify-embed iframe { height: 330px; }
+  .spotify-embed iframe { height: 152px; }
   .page-intro { padding: 3.5rem 0 2.75rem; }
   .site-footer { flex-direction: column; gap: 0.45rem; }
 }
