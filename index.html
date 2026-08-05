@@ -3,77 +3,205 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Joshua Brenneman — Resume</title>
+  <meta name="description" content="Joshua Brenneman is a senior software engineer building AWS-native platforms for biomedical research, scientific computing, data systems, and machine learning." />
+  <meta name="theme-color" content="#10151d" />
+  <link rel="canonical" href="https://jabrennem.github.io/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Joshua Brenneman | AWS Cloud &amp; Platform Engineer" />
+  <meta property="og:description" content="Senior Software Engineer building AWS-native platforms for biomedical research, scientific computing, data systems, and machine learning." />
+  <meta property="og:url" content="https://jabrennem.github.io/" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <title>Joshua Brenneman | AWS Cloud &amp; Platform Engineer</title>
   <link rel="stylesheet" href="style.css" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Joshua Brenneman",
+      "jobTitle": "Senior Software Engineer",
+      "url": "https://jabrennem.github.io/",
+      "email": "mailto:jbrenn.dev@gmail.com",
+      "address": { "@type": "PostalAddress", "addressLocality": "Myrtle Beach", "addressRegion": "SC", "addressCountry": "US" },
+      "sameAs": ["https://github.com/jabrennem", "https://www.linkedin.com/in/joshuabrennemana/"]
+    }
+  </script>
 </head>
 <body>
-  <main class="resume">
-    <header class="header">
-      <h1>Joshua Brenneman</h1>
-      <p class="tagline">Your professional tagline here</p>
-      <ul class="contact">
-        <li><a href="mailto:you@example.com">you@example.com</a></li>
-        <li><a href="https://github.com/joshuabrenneman">github.com/joshuabrenneman</a></li>
-        <li><a href="https://linkedin.com/in/yourprofile">linkedin.com/in/yourprofile</a></li>
-        <li>City, Country</li>
-      </ul>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <main class="site-shell" id="content">
+    <header class="site-header">
+      <a class="brand" href="#about" aria-label="Joshua Brenneman, home">JB<span aria-hidden="true">.</span></a>
+      <nav class="tabs" aria-label="Main sections" role="tablist">
+        <button id="about-tab" class="tab" type="button" role="tab" aria-selected="true" aria-controls="about" tabindex="0">About</button>
+        <button id="audio-production-tab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="audio-production" tabindex="-1">Audio Production</button>
+        <button id="software-development-tab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="software-development" tabindex="-1">Software Development</button>
+        <button id="blog-tab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="blog" tabindex="-1">Blog</button>
+      </nav>
     </header>
 
-    <section>
-      <h2>Summary</h2>
-      <p>
-        A short paragraph introducing who you are, what you do, and what you're
-        looking for. Two or three sentences is plenty.
-      </p>
-    </section>
-
-    <section>
-      <h2>Experience</h2>
-
-      <article class="entry">
-        <div class="entry-head">
-          <h3>Job Title</h3>
-          <span class="entry-meta">Company Name · Jan 2023 – Present</span>
+    <section id="about" class="tab-panel" role="tabpanel" aria-labelledby="about-tab">
+      <div class="hero">
+        <p class="eyebrow">Senior Software Engineer · AWS Cloud &amp; Platform Engineering</p>
+        <h1>Joshua Brenneman</h1>
+        <p class="hero-copy">I build AWS-native platforms that help scientists, engineers, and data teams solve complex problems.</p>
+        <p class="supporting-copy">I design reusable cloud systems for biomedical research, clinical genomics, scientific computing, and machine learning. Outside of work, I explore agentic software, music technology, and product development.</p>
+        <div class="actions">
+          <a class="button primary" href="#experience">View experience</a>
+          <button class="button secondary" type="button" data-open-tab="software-development-tab">View projects</button>
+          <a class="text-link" href="https://github.com/jabrennem" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="https://www.linkedin.com/in/joshuabrennemana" target="_blank" rel="noopener noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
         </div>
-        <ul>
-          <li>Accomplishment or responsibility described in one line.</li>
-          <li>Another bullet, ideally with a measurable outcome.</li>
-          <li>Another bullet highlighting a relevant skill or project.</li>
-        </ul>
-      </article>
+      </div>
 
-      <article class="entry">
-        <div class="entry-head">
-          <h3>Previous Job Title</h3>
-          <span class="entry-meta">Previous Company · Jun 2020 – Dec 2022</span>
+      <section class="section narrative" aria-labelledby="about-heading">
+        <p class="eyebrow" id="about-heading">About</p>
+        <p>I am a software engineer focused on creating systems that make difficult work easier. Professionally, I design AWS-native platforms that support biomedical research, clinical genomics, data processing, and machine learning. My work centers on reusable infrastructure, distributed workflows, developer enablement, and reliable cloud operations.</p>
+        <p>Outside of work, I produce, mix, and master music and build software inspired by limitations I encounter in creative tools. Across both areas, the common thread is craftsmanship: understanding a problem deeply, designing a thoughtful system, and continuing to improve it until it becomes genuinely useful.</p>
+      </section>
+
+      <section class="section" id="experience" aria-labelledby="experience-heading">
+        <div class="section-heading">
+          <p class="eyebrow" id="experience-heading">Experience</p>
+          <p>Building reliable systems for scientific and clinical work.</p>
         </div>
-        <ul>
-          <li>Accomplishment or responsibility described in one line.</li>
-          <li>Another bullet with a measurable outcome.</li>
-        </ul>
-      </article>
-    </section>
-
-    <section>
-      <h2>Education</h2>
-      <article class="entry">
-        <div class="entry-head">
-          <h3>Degree, Field of Study</h3>
-          <span class="entry-meta">University Name · 2016 – 2020</span>
+        <div class="timeline">
+          <article class="role">
+            <div class="role-topline"><h2>Senior Software Engineer</h2><time datetime="2023-04">Apr 2023 - Present</time></div>
+            <p class="role-company">Nationwide Children’s Hospital · Office of Data Sciences, Cloud Solutions Team</p>
+            <ul>
+              <li>Design reusable AWS platform capabilities across more than 10 AWS accounts and an engineering ecosystem of more than 600 repositories.</li>
+              <li>Lead architecture and implementation of a research lakehouse spanning storage, ETL, governance, lineage, and visualization with Amazon S3, Athena, and Apache Iceberg.</li>
+              <li>Support production workflows for more than five research and clinical laboratories working with petabyte-scale datasets.</li>
+              <li>Build orchestration and compute patterns with Step Functions, Lambda, EMR, Glue, Batch, ECS, Docker, and ECR.</li>
+              <li>Partner with data scientists on SageMaker workloads and AWS infrastructure for generative-AI applications using Amazon Bedrock.</li>
+            </ul>
+          </article>
+          <article class="role">
+            <div class="role-topline"><h2>Bioinformatics Software Developer</h2><time datetime="2019-10">Oct 2019 - Apr 2023</time></div>
+            <p class="role-company">Nationwide Children’s Hospital · Institute for Genomic Medicine, Cloud Solutions Team</p>
+            <ul>
+              <li>Designed cloud-native genomics workflows using Step Functions, Lambda, AWS Batch, and containerized next-generation sequencing pipelines.</li>
+              <li>Built cloud services for genomic variant analysis and research-data applications with Python and CloudFormation.</li>
+              <li>Worked with bioinformatics scientists to translate research workflows into reliable production systems.</li>
+            </ul>
+          </article>
+          <article class="role">
+            <div class="role-topline"><h2>Bioinformatics Software Developer</h2><time datetime="2017-10">Oct 2017 - Oct 2019</time></div>
+            <p class="role-company">Nationwide Children’s Hospital · Institute for Genomic Medicine, Clinical Informatics Team</p>
+            <ul>
+              <li>Developed applications and backend services supporting clinical-genomics operations and laboratory workflows.</li>
+              <li>Translated stakeholder requirements into production software and supported applications through iterative improvement.</li>
+            </ul>
+          </article>
+          <article class="role">
+            <div class="role-topline"><h2>Big Data Application Developer</h2><time datetime="2016-06">Jun 2016 - Oct 2017</time></div>
+            <p class="role-company">CGI · Consulting engagement with PNC Bank</p>
+            <ul><li>Developed Hadoop and Apache Spark data-processing workflows and improved distributed batch-system performance and reliability.</li></ul>
+          </article>
         </div>
-      </article>
+      </section>
+
+      <section class="section" aria-labelledby="capabilities-heading">
+        <div class="section-heading"><p class="eyebrow" id="capabilities-heading">Capabilities</p></div>
+        <div class="capability-grid">
+          <article><h2>Platform engineering</h2><p>AWS platform architecture, serverless systems, distributed workflows, event-driven architecture, and developer enablement.</p></article>
+          <article><h2>Cloud &amp; data platforms</h2><p>Amazon S3, Athena, Apache Iceberg, AWS Glue, EMR, ETL, and lakehouse architecture.</p></article>
+          <article><h2>Compute &amp; containers</h2><p>AWS Lambda, Batch, ECS, Docker, Amazon ECR, and production orchestration patterns.</p></article>
+          <article><h2>Infrastructure &amp; delivery</h2><p>AWS CDK, CloudFormation, AWS SAM, GitHub Actions, CodePipeline, CodeBuild, and CI/CD.</p></article>
+          <article><h2>Software engineering</h2><p>Python, TypeScript, JavaScript, and modern C++ for application architecture and product development.</p></article>
+          <article><h2>AI platforms</h2><p>Amazon SageMaker, Amazon Bedrock, agentic application architecture, MCP, and AI-assisted engineering.</p></article>
+        </div>
+      </section>
+
+      <section class="section credentials" aria-label="Education and certification">
+        <div><p class="eyebrow">Education</p><h2>B.A. Linguistics</h2><p>Minor in Computer Science</p></div>
+        <div><p class="eyebrow">Certification</p><h2>AWS Certified Developer - Associate</h2></div>
+      </section>
     </section>
 
-    <section>
-      <h2>Skills</h2>
-      <ul class="skills">
-        <li>Skill one</li>
-        <li>Skill two</li>
-        <li>Skill three</li>
-        <li>Skill four</li>
-        <li>Skill five</li>
-      </ul>
+    <section id="audio-production" class="tab-panel" role="tabpanel" aria-labelledby="audio-production-tab" hidden>
+      <div class="page-intro">
+        <p class="eyebrow">Audio Production</p>
+        <h1>Music is part of how I design.</h1>
+        <p>I produce my own music and collaborate with other artists, occasionally providing mixing and mastering. That practical experience shapes how I think about audio workflows and motivates my work on new music-production tools.</p>
+      </div>
+      <section class="section audio-note">
+        <p class="eyebrow">Practice</p>
+        <h2>A perspective built at the session level.</h2>
+        <p>Working directly in creative tools makes the friction in a workflow visible. It is the starting point for my interest in thoughtful, AI-native music software - tools that support creative decisions without getting in the way of them.</p>
+      </section>
+      <section class="section" aria-labelledby="playlist-heading">
+        <p class="eyebrow">Selected listening</p>
+        <h2 id="playlist-heading">Music from the studio.</h2>
+        <p class="playlist-intro">A selection of tracks that reflects my production work and musical direction.</p>
+        <div class="spotify-embed">
+          <iframe title="Joshua Brenneman audio production playlist on Spotify" src="https://open.spotify.com/embed/playlist/2ZA5D6NJ5HQanMRfAfX8zQ?utm_source=generator&amp;si=1472ec09bbaf4aad" width="100%" height="460" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+        </div>
+      </section>
     </section>
+
+    <section id="software-development" class="tab-panel" role="tabpanel" aria-labelledby="software-development-tab" hidden>
+      <div class="page-intro">
+        <p class="eyebrow">Software Development</p>
+        <h1>Systems for difficult, creative, and scientific work.</h1>
+        <p>I work across cloud platforms, scientific workflows, developer tools, and product development. My personal projects explore the places where careful engineering can make a complex tool feel more useful.</p>
+      </div>
+      <section class="section" aria-labelledby="projects-heading">
+        <p class="eyebrow" id="projects-heading">Selected project</p>
+        <article class="project-card">
+          <div><p class="status">Private development · In progress</p><h2>Agentic Digital Audio Workstation</h2></div>
+          <p>A digital audio workstation exploring AI-native music-production workflows. Its direction is informed by hands-on production experience and workflow limitations in existing DAWs.</p>
+          <ul class="project-tags"><li>Modern C++</li><li>JUCE</li><li>Tracktion Engine</li><li>Native agent architecture</li><li>Model Context Protocol</li><li>AI-assisted development</li></ul>
+          <p class="project-note">The project is private and actively under development; no public repository or hosted service is available.</p>
+        </article>
+      </section>
+      <section class="section callout">
+        <p class="eyebrow">Open source</p>
+        <h2>More work on GitHub.</h2>
+        <p>For publicly available code and ongoing experiments, visit <a href="https://github.com/jabrennem" target="_blank" rel="noopener noreferrer">github.com/jabrennem <span aria-hidden="true">↗</span></a>.</p>
+      </section>
+    </section>
+
+    <section id="blog" class="tab-panel" role="tabpanel" aria-labelledby="blog-tab" hidden>
+      <div class="page-intro">
+        <p class="eyebrow">Writing</p>
+        <h1>Notes in progress.</h1>
+        <p>This space is reserved for practical writing about platform engineering, scientific workflow orchestration, infrastructure as code, agentic applications, MCP, and music technology.</p>
+      </div>
+      <section class="section empty-state"><p class="eyebrow">No posts yet</p><h2>Nothing published - yet.</h2><p>When there is something useful to share, it will appear here.</p></section>
+    </section>
+
+    <footer class="site-footer">
+      <p>Based in Myrtle Beach, South Carolina.</p>
+      <a href="mailto:jbrenn.dev@gmail.com">jbrenn.dev@gmail.com</a>
+    </footer>
   </main>
+  <script>
+    const tabs = [...document.querySelectorAll('[role="tab"]')];
+    const panels = [...document.querySelectorAll('[role="tabpanel"]')];
+    function selectTab(tab, focus = false) {
+      tabs.forEach((item) => {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', String(selected));
+        item.tabIndex = selected ? 0 : -1;
+      });
+      panels.forEach((panel) => { panel.hidden = panel.id !== tab.getAttribute('aria-controls'); });
+      if (focus) tab.focus();
+    }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectTab(tab));
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        selectTab(tabs[next], true);
+      });
+    });
+    document.querySelectorAll('[data-open-tab]').forEach((button) => {
+      button.addEventListener('click', () => selectTab(document.getElementById(button.dataset.openTab), true));
+    });
+  </script>
 </body>
 </html>

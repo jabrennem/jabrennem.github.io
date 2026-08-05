@@ -1,0 +1,9 @@
+{
+  "name": "Joshua Brenneman | AWS Cloud & Platform Engineer",
+  "short_name": "Joshua Brenneman",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#10151d",
+  "theme_color": "#10151d",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
