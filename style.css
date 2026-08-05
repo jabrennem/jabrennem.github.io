@@ -108,11 +108,12 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
   .section { padding: 3rem 0; }
   .section-heading { display: block; }
   .section-heading > p:last-child { margin-top: -0.4rem; }
-  .capability-grid { grid-template-columns: 1fr; }
+  .capability-grid { background: transparent; border: 0; display: flex; gap: 0.8rem; margin-right: -1.25rem; overflow-x: auto; padding: 0 1.25rem 0.75rem 0; scroll-snap-type: x proximity; }
+  .capability-grid article { border: 1px solid var(--border); flex: 0 0 min(80vw, 300px); min-height: 11.5rem; scroll-snap-align: start; }
   .credentials { grid-template-columns: 1fr; }
   .artist-feature { grid-template-columns: 1fr; }
   .artist-copy { padding: 1.5rem; }
-  .artist-logo { height: 72px; margin-bottom: 1rem; }
+  .artist-logo { align-self: center; height: 72px; margin-bottom: 1rem; width: 84%; }
   .artist-photo { min-height: 210px; }
   .audio-gallery { gap: 0.65rem; margin-top: 1rem; }
   .audio-gallery img { height: 160px; }
