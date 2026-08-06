@@ -185,13 +185,36 @@
         <p>I work across cloud platforms, scientific workflows, developer tools, and product development. My personal projects explore the places where careful engineering can make a complex tool feel more useful.</p>
       </div>
       <section class="section" aria-labelledby="projects-heading">
-        <p class="eyebrow" id="projects-heading">Selected project</p>
-        <article class="project-card">
-          <div><p class="status">Private development · In progress</p><h2>Agentic Digital Audio Workstation</h2></div>
-          <p>A digital audio workstation exploring AI-native music-production workflows. Its direction is informed by hands-on production experience and workflow limitations in existing DAWs.</p>
-          <ul class="project-tags"><li>Modern C++</li><li>JUCE</li><li>Tracktion Engine</li><li>Native agent architecture</li><li>Model Context Protocol</li><li>AI-assisted development</li></ul>
-          <p class="project-note">The project is private and actively under development; no public repository or hosted service is available.</p>
-        </article>
+        <div class="section-heading">
+          <p class="eyebrow" id="projects-heading">Planned case studies</p>
+          <p>Small, deployable AWS projects that demonstrate platform engineering in practice.</p>
+        </div>
+        <div class="project-stack">
+          <article class="project-card">
+            <p class="status">In development</p>
+            <h2>Serverless ETL</h2>
+            <p>An event-driven data-ingestion pipeline that turns files arriving under an S3 <code>feed/</code> prefix into queryable Apache Iceberg data.</p>
+            <ul class="project-tags"><li>AWS SAM</li><li>Amazon S3</li><li>EventBridge</li><li>Step Functions</li><li>EMR Serverless</li><li>Apache Iceberg</li></ul>
+            <p class="project-note">The case study will cover the event flow, EMR Serverless job orchestration, table layout, operational safeguards, and how to deploy or remove the stack.</p>
+            <button class="button secondary project-notes-link" type="button" data-open-tab="blog">Follow the build notes</button>
+          </article>
+          <article class="project-card">
+            <p class="status">Planned</p>
+            <h2>Cross-account ECR repository construct</h2>
+            <p>A reusable CDK construct for an Amazon ECR repository that grants approved accounts in an AWS Organization pull access through a carefully scoped repository policy.</p>
+            <ul class="project-tags"><li>AWS CDK</li><li>Amazon ECR</li><li>AWS Organizations</li><li>IAM</li><li>TypeScript</li><li>Infrastructure as Code</li></ul>
+            <p class="project-note">The case study will focus on a reusable interface, least-privilege access, policy validation, and tests for the synthesized CloudFormation template.</p>
+            <button class="button secondary project-notes-link" type="button" data-open-tab="blog">Follow the build notes</button>
+          </article>
+          <article class="project-card">
+            <p class="status">Planned</p>
+            <h2>Batch workflow launcher</h2>
+            <p>A containerized scientific-workflow pattern in which a Step Functions state machine validates an input manifest, prepares downstream commands, and launches compute on AWS Batch.</p>
+            <ul class="project-tags"><li>AWS SAM</li><li>Step Functions</li><li>AWS Batch</li><li>Docker</li><li>AWS Lambda</li><li>Event-driven workflows</li></ul>
+            <p class="project-note">The case study will show input validation, command construction, job-queue configuration, retry behavior, and traceable job execution using synthetic data.</p>
+            <button class="button secondary project-notes-link" type="button" data-open-tab="blog">Follow the build notes</button>
+          </article>
+        </div>
       </section>
       <section class="section callout">
         <p class="eyebrow">Open source</p>
@@ -203,10 +226,58 @@
     <section id="blog" class="tab-panel" role="tabpanel" aria-labelledby="blog-tab" hidden>
       <div class="page-intro">
         <p class="eyebrow">Writing</p>
-        <h1>Notes in progress.</h1>
-        <p>This space is reserved for practical writing about platform engineering, scientific workflow orchestration, infrastructure as code, agentic applications, MCP, and music technology.</p>
+        <h1>Build notes, in public.</h1>
+        <p>Cloud systems, music technology, and production practice all meet here. Project cards show the outcome; these notes document the decisions, tradeoffs, and iterations that lead there—one useful piece at a time.</p>
       </div>
-      <section class="section empty-state"><p class="eyebrow">No posts yet</p><h2>Nothing published - yet.</h2><p>When there is something useful to share, it will appear here.</p></section>
+      <section class="section" aria-labelledby="writing-series-heading">
+        <div class="section-heading">
+          <p class="eyebrow" id="writing-series-heading">Upcoming series</p>
+          <p>Each project grows through a sequence of focused posts, not a single retrospective.</p>
+        </div>
+        <div class="article-tools">
+          <label class="search-label" for="article-search">Search build notes</label>
+          <input id="article-search" class="article-search" type="search" placeholder="Try “Iceberg”, “mixing”, or “AWS Batch”" autocomplete="off" />
+          <p id="article-count" class="article-count" role="status" aria-live="polite"></p>
+        </div>
+        <div id="article-list" class="writing-series">
+          <a class="post-card" href="blog/serverless-etl.html" data-search="serverless etl s3 eventbridge step functions emr serverless apache iceberg data lake lakehouse athena ingestion">
+            <p class="status">Series 01 · Serverless ETL</p>
+            <h2>From S3 event to Iceberg table</h2>
+            <p>The initial architecture: prefix-scoped S3 events, EventBridge routing, Step Functions orchestration, and EMR Serverless execution.</p>
+            <ol class="post-outline"><li>Why this ingestion boundary and event flow</li><li>Writing a reliable EMR Serverless job</li><li>Operating the pipeline: retries, data layout, and costs</li></ol>
+            <p class="post-keywords"><span>Keywords</span> AWS SAM · S3 · EventBridge · Step Functions · EMR Serverless · Apache Iceberg · Lakehouse</p>
+          </a>
+          <a class="post-card" href="blog/cross-account-ecr.html" data-search="cross account ecr cdk cloudformation aws organizations iam repository policy container registry typescript infrastructure as code">
+            <p class="status">Series 02 · CDK construct</p>
+            <h2>Cross-account ECR pull access without a policy sprawl</h2>
+            <p>A reusable CDK abstraction for organization-aware image sharing, with its security assumptions made explicit.</p>
+            <ol class="post-outline"><li>Defining the construct’s public interface</li><li>Designing and testing the repository policy</li><li>What the synthesized CloudFormation makes visible</li></ol>
+            <p class="post-keywords"><span>Keywords</span> AWS CDK · Amazon ECR · AWS Organizations · IAM · TypeScript · CloudFormation</p>
+          </a>
+          <a class="post-card" href="blog/batch-workflow-launcher.html" data-search="batch workflow launcher step functions aws batch docker lambda scientific workflow manifest validation job queue orchestration">
+            <p class="status">Series 03 · Batch workflow launcher</p>
+            <h2>Making a batch workflow inspectable from the start</h2>
+            <p>An orchestration pattern for validating manifests, generating commands, and handing containerized work to AWS Batch.</p>
+            <ol class="post-outline"><li>Choosing the workflow boundary</li><li>Validation and command construction</li><li>Retries, job state, and traceability</li></ol>
+            <p class="post-keywords"><span>Keywords</span> AWS SAM · Step Functions · AWS Batch · Docker · Lambda · Scientific workflows</p>
+          </a>
+          <a class="post-card" href="blog/juno.html" data-search="juno daw digital audio workstation music technology ai native agent mcp music production mixing mastering juce c++">
+            <p class="status">Series 04 · Juno</p>
+            <h2>Notes from building a more thoughtful DAW</h2>
+            <p>Juno is a private music-technology project exploring AI-native production workflows, informed by the practical friction of writing, mixing, and finishing music.</p>
+            <ol class="post-outline"><li>The workflow problems worth solving first</li><li>Designing an agent-native production tool</li><li>What production practice teaches the product</li></ol>
+            <p class="post-keywords"><span>Keywords</span> DAW · Music technology · AI-native · Agents · MCP · Mixing · Mastering</p>
+          </a>
+          <a class="post-card" href="blog/tensor-album-mix.html" data-search="tensor album mixing mastering music production arrangement dynamics translation studio recording audio">
+            <p class="status">Studio note · Tensor</p>
+            <h2>Mixing a new Tensor album</h2>
+            <p>A production journal on taking a new Tensor record from final arrangements through mixing and mastering—decisions, revisions, and the details that make a collection feel cohesive.</p>
+            <ol class="post-outline"><li>Creating a mix language for the record</li><li>Balancing translation, dynamics, and character</li><li>What I will carry into the next production</li></ol>
+            <p class="post-keywords"><span>Keywords</span> Tensor · Album mixing · Mastering · Arrangement · Dynamics · Studio production</p>
+          </a>
+        </div>
+        <nav id="article-pagination" class="article-pagination" aria-label="Article pages"></nav>
+      </section>
     </section>
 
     <footer class="site-footer">
@@ -238,6 +309,41 @@
     document.querySelectorAll('[data-open-tab]').forEach((button) => {
       button.addEventListener('click', () => selectTab(document.getElementById(button.dataset.openTab), true));
     });
+    const tabFromHash = document.getElementById(window.location.hash.slice(1) + '-tab');
+    if (tabFromHash?.getAttribute('role') === 'tab') selectTab(tabFromHash);
+
+    const articleSearch = document.getElementById('article-search');
+    const articleCards = [...document.querySelectorAll('#article-list .post-card')];
+    const articleCount = document.getElementById('article-count');
+    const articlePagination = document.getElementById('article-pagination');
+    const articlesPerPage = 10;
+    let articlePage = 1;
+    function renderArticles() {
+      const query = articleSearch.value.trim().toLowerCase();
+      const matches = articleCards.filter((card) => card.dataset.search.includes(query));
+      const pageCount = Math.max(1, Math.ceil(matches.length / articlesPerPage));
+      articlePage = Math.min(articlePage, pageCount);
+      const first = (articlePage - 1) * articlesPerPage;
+      articleCards.forEach((card) => { card.hidden = !matches.slice(first, first + articlesPerPage).includes(card); });
+      articleCount.textContent = matches.length ? `Showing ${first + 1}–${Math.min(first + articlesPerPage, matches.length)} of ${matches.length} entries` : 'No entries match that search.';
+      articlePagination.replaceChildren();
+      if (pageCount > 1) {
+        for (let page = 1; page <= pageCount; page += 1) {
+          const button = document.createElement('button');
+          button.className = 'button secondary';
+          button.type = 'button';
+          button.textContent = String(page);
+          button.setAttribute('aria-label', `Page ${page}`);
+          button.setAttribute('aria-current', String(page === articlePage));
+          button.addEventListener('click', () => { articlePage = page; renderArticles(); });
+          articlePagination.append(button);
+        }
+      }
+    }
+    if (articleSearch) {
+      articleSearch.addEventListener('input', () => { articlePage = 1; renderArticles(); });
+      renderArticles();
+    }
   </script>
 </body>
 </html>
