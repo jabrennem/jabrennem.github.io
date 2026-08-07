@@ -1,10 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
 import posts from '../../data/posts';
-import ServerlessEtlPost from './ServerlessEtlPost';
-
-const FULL_POSTS = {
-  'serverless-etl': ServerlessEtlPost,
-};
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -21,11 +16,23 @@ export default function BlogPost() {
     );
   }
 
-  const FullContent = FULL_POSTS[slug];
-  if (FullContent) {
-    return <FullContent />;
+  // If the post has full MDX content, render it
+  if (post.Component) {
+    return (
+      <article className="blog-article">
+        <div className="page-intro">
+          <p className="eyebrow">{post.status}</p>
+          <h1>{post.title}</h1>
+        </div>
+        <post.Component />
+        <p>
+          <Link className="text-link" to="/blog">← All build notes</Link>
+        </p>
+      </article>
+    );
   }
 
+  // Fallback: outline-only placeholder for posts without content yet
   return (
     <article>
       <div className="page-intro">

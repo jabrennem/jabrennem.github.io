@@ -1,0 +1,13 @@
+// Auto-imports all .mdx files in this directory.
+// Each module exports frontmatter fields (slug, title, description, etc.)
+// and a default component (the rendered MDX content).
+
+const modules = import.meta.glob('./*.mdx', { eager: true });
+
+const posts = Object.values(modules).map((mod) => ({
+  ...mod.frontmatter,
+  outline: mod.frontmatter.outline || [],
+  Component: mod.default,
+}));
+
+export default posts;
