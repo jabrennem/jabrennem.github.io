@@ -21,17 +21,27 @@ button { font: inherit; }
 .skip-link { background: var(--accent); color: #07100f; left: 1rem; padding: 0.65rem 0.9rem; position: fixed; top: -5rem; z-index: 10; }
 .skip-link:focus { top: 1rem; }
 .site-shell { margin: 0 auto; max-width: var(--max-width); padding: 0 2rem 2.5rem; }
-.site-header { align-items: center; border-bottom: 1px solid var(--border); display: flex; gap: 2rem; justify-content: space-between; min-height: 5.5rem; }
+.site-header { align-items: center; border-bottom: 1px solid var(--border); display: flex; gap: 2rem; justify-content: space-between; }
+.header-row { align-items: center; display: flex; justify-content: space-between; width: 100%; }
 .brand { color: var(--text); font-size: 1.35rem; font-weight: 750; letter-spacing: -0.06em; text-decoration: none; }
 .brand span { color: var(--accent); }
-.tabs { align-self: stretch; display: flex; gap: 0.25rem; overflow-x: auto; }
-.tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; padding: 1.9rem 0.65rem 1.55rem; text-decoration: none; white-space: nowrap; }
+.menu-toggle { background: none; border: 0; cursor: pointer; display: none; padding: 0.5rem; position: relative; height: 2.5rem; width: 2.5rem; }
+.hamburger, .hamburger::before, .hamburger::after { background: var(--text); border-radius: 2px; display: block; height: 2px; position: absolute; transition: transform 220ms ease, opacity 120ms ease; width: 1.4rem; }
+.hamburger { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.hamburger::before, .hamburger::after { content: ""; left: 0; }
+.hamburger::before { top: -6px; }
+.hamburger::after { top: 6px; }
+.hamburger--open { background: transparent; }
+.hamburger--open::before { top: 0; transform: rotate(45deg); }
+.hamburger--open::after { top: 0; transform: rotate(-45deg); }
+.tabs { align-self: stretch; display: flex; gap: 0.25rem; }
+.tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; font-size: 0.93rem; padding: 1.7rem 0.5rem 1.7rem; text-decoration: none; white-space: nowrap; }
 .tab:hover, .tab--active { color: var(--text); }
 .tab--active { border-bottom-color: var(--accent); }
 .tab:focus-visible, a:focus-visible, .button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 
-.hero { align-items: center; display: grid; gap: clamp(2rem, 5vw, 4rem); grid-template-columns: minmax(0, 1fr) clamp(190px, 27vw, 350px); max-width: 900px; padding: 7rem 0 5.75rem; }
-.headshot { border: 1px solid var(--border); border-radius: 50%; display: block; height: auto; justify-self: end; max-width: 100%; width: 100%; }
+.hero { align-items: center; display: grid; gap: clamp(2rem, 5vw, 4rem); grid-template-columns: 1fr clamp(180px, 24vw, 300px); padding: 7rem 0 5.75rem; }
+.headshot { border: 1px solid var(--border); border-radius: 50%; display: block; height: auto; max-width: 100%; width: 100%; }
 .eyebrow { color: var(--accent); font-size: 0.76rem; font-weight: 750; letter-spacing: 0.12em; margin: 0 0 0.9rem; text-transform: uppercase; }
 h1, h2, p { margin-top: 0; }
 h1 { font-size: clamp(3rem, 8vw, 6.3rem); letter-spacing: -0.07em; line-height: 0.95; margin-bottom: 1.75rem; }
@@ -129,13 +139,17 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .site-footer { border-top: 1px solid var(--border); color: var(--subtle); display: flex; font-size: 0.9rem; justify-content: space-between; margin-top: 4rem; padding-top: 1.6rem; }
 .site-footer p { margin: 0; }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .site-shell { padding: 0 1.25rem 2rem; }
-  .site-header { align-items: flex-start; flex-direction: column; gap: 0; padding-top: 1.2rem; }
-  .tabs { margin: 0 -1.25rem; max-width: calc(100% + 2.5rem); padding: 0 1.25rem; width: calc(100% + 2.5rem); }
-  .tab { padding: 1.1rem 0.55rem 0.9rem; }
+  .site-header { align-items: stretch; flex-direction: column; gap: 0; padding-top: 0; }
+  .header-row { min-height: 4.5rem; }
+  .menu-toggle { display: block; }
+  .tabs { display: none; flex-direction: column; gap: 0; margin: 0; max-width: 100%; overflow: visible; padding: 0; width: 100%; border-top: 1px solid var(--border); }
+  .tabs--open { display: flex; }
+  .tab { padding: 1rem 0; border-bottom: 1px solid var(--border); text-align: left; }
+  .tab--active { border-bottom-color: var(--accent); }
   .hero { display: flex; flex-direction: column; gap: 1.75rem; padding: 4.5rem 0 4rem; }
-  .headshot { align-self: flex-start; order: -1; width: 132px; }
+  .headshot { align-self: center; order: -1; width: clamp(160px, 45vw, 220px); }
   .narrative { display: block; }
   .narrative .eyebrow { margin-bottom: 1.4rem; }
   .narrative p:not(.eyebrow) + p { margin-top: 1rem; }
