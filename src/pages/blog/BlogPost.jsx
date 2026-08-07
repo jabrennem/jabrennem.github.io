@@ -1,5 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
 import posts from '../../data/posts';
+import ServerlessEtlPost from './ServerlessEtlPost';
+
+const FULL_POSTS = {
+  'serverless-etl': ServerlessEtlPost,
+};
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -14,6 +19,11 @@ export default function BlogPost() {
         </p>
       </div>
     );
+  }
+
+  const FullContent = FULL_POSTS[slug];
+  if (FullContent) {
+    return <FullContent />;
   }
 
   return (

@@ -113,6 +113,17 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .post-outline li + li { margin-top: 0.35rem; }
 .post-keywords { border-top: 1px solid var(--border); color: var(--subtle); font-size: 0.82rem; margin: 1.35rem 0 0; padding-top: 1rem; }
 .post-keywords span { color: var(--accent); font-weight: 700; margin-right: 0.45rem; text-transform: uppercase; }
+.architecture-diagram { margin: 0 0 2rem; overflow-x: auto; }
+.architecture-diagram svg { display: block; min-width: 600px; }
+.blog-article h3 { color: var(--text); font-size: 1.05rem; margin: 2rem 0 0.75rem; }
+.blog-article dl.design-decisions { margin: 1.25rem 0; }
+.blog-article dl.design-decisions dt { color: var(--accent-strong); font-weight: 600; margin-top: 1rem; }
+.blog-article dl.design-decisions dd { color: var(--muted); margin: 0.3rem 0 0 0; max-width: 700px; }
+.blog-article pre { background: var(--surface); border: 1px solid var(--border); overflow-x: auto; padding: 1.25rem; margin: 1rem 0; }
+.blog-article code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.85rem; }
+.blog-article p code { background: var(--surface-soft); padding: 0.15em 0.35em; border-radius: 3px; }
+.blog-article ol, .blog-article ul { color: var(--muted); max-width: 700px; padding-left: 1.25rem; }
+.blog-article li + li { margin-top: 0.4rem; }
 .article-pagination { display: flex; gap: 0.5rem; margin-top: 1.5rem; }
 .article-pagination [aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #07100f; }
 .site-footer { border-top: 1px solid var(--border); color: var(--subtle); display: flex; font-size: 0.9rem; justify-content: space-between; margin-top: 4rem; padding-top: 1.6rem; }
