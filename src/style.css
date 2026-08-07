@@ -25,9 +25,9 @@ button { font: inherit; }
 .brand { color: var(--text); font-size: 1.35rem; font-weight: 750; letter-spacing: -0.06em; text-decoration: none; }
 .brand span { color: var(--accent); }
 .tabs { align-self: stretch; display: flex; gap: 0.25rem; overflow-x: auto; }
-.tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; padding: 1.9rem 0.65rem 1.55rem; white-space: nowrap; }
-.tab:hover, .tab[aria-selected="true"] { color: var(--text); }
-.tab[aria-selected="true"] { border-bottom-color: var(--accent); }
+.tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; padding: 1.9rem 0.65rem 1.55rem; text-decoration: none; white-space: nowrap; }
+.tab:hover, .tab--active { color: var(--text); }
+.tab--active { border-bottom-color: var(--accent); }
 .tab:focus-visible, a:focus-visible, .button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 
 .hero { align-items: center; display: grid; gap: clamp(2rem, 5vw, 4rem); grid-template-columns: minmax(0, 1fr) clamp(190px, 27vw, 350px); max-width: 900px; padding: 7rem 0 5.75rem; }
@@ -105,7 +105,6 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .article-search:focus { border-color: var(--accent); outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 .article-count { color: var(--muted); font-size: 0.9rem; margin: 0.7rem 0 0; }
 .post-card { background: var(--surface); border: 1px solid var(--border); color: inherit; display: block; padding: 2rem; text-decoration: none; transition: border-color 160ms ease, transform 160ms ease; }
-.post-card[hidden] { display: none; }
 .post-card:hover { border-color: var(--accent); color: inherit; transform: translateY(-2px); }
 .post-card:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 .post-card h2 { font-size: clamp(1.4rem, 2.5vw, 2rem); }
@@ -149,4 +148,4 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-@media print { .site-header, .site-footer, .actions, .skip-link { display: none; } .site-shell { max-width: none; padding: 0; } .tab-panel[hidden] { display: block; } body { background: #fff; color: #111; } .section, .capability-grid, .project-card, .callout, .empty-state { border-color: #aaa; } .capability-grid article, .project-card, .callout, .empty-state { background: #fff; } }
+@media print { .site-header, .site-footer, .actions, .skip-link { display: none; } .site-shell { max-width: none; padding: 0; } body { background: #fff; color: #111; } .section, .capability-grid, .project-card, .callout, .empty-state { border-color: #aaa; } .capability-grid article, .project-card, .callout, .empty-state { background: #fff; } }
