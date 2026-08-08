@@ -1,18 +1,22 @@
 ---
 slug: serverless-etl
 status: "Series 01 \xB7 Serverless ETL"
-title: From S3 event to Iceberg table
+title: From S3 events to S3 Table Buckets with Iceberg
 description: "The initial architecture: prefix-scoped S3 events, EventBridge routing, Step Functions orchestration, and EMR Serverless execution."
 keywords: "AWS SAM \xB7 S3 \xB7 EventBridge \xB7 Step Functions \xB7 EMR Serverless \xB7 Apache Iceberg \xB7 Lakehouse"
 search: serverless etl s3 eventbridge step functions emr serverless apache iceberg data lake lakehouse athena ingestion
 repoUrl: https://github.com/jabrennem/aws-sam-serverless-etl
 outline:
-  - Why this ingestion boundary and event flow
+  - What problem does this solve?
   - Writing a reliable EMR Serverless job
   - "Operating the pipeline: retries, data layout, and costs"
 ---
 
 import ArchitectureDiagram from '../../components/ArchitectureDiagram';
+import ComputeDiagram from '../../components/ComputeDiagram';
+import OrchestrationDiagram from '../../components/OrchestrationDiagram';
+import StorageDiagram from '../../components/StorageDiagram';
+import { Link } from 'react-router-dom';
 
 An in-depth walkthrough of a production-grade serverless ETL pipeline that ingests
 Parquet files from S3 into managed Apache Iceberg tables using AWS SAM, Step Functions,
@@ -20,61 +24,85 @@ Lambda, and EMR Serverless.
 
 [View the repository on GitHub →](https://github.com/jabrennem/aws-sam-serverless-etl)
 
+<nav className="table-of-contents" aria-label="Table of contents">
+  <p className="eyebrow">On this page</p>
+  <ol>
+    <li><Link to="#ingestion-boundary-and-event-flow">What problem does this solve?</Link></li>
+    <li><Link to="#infrastructure-as-code">Infrastructure as code</Link></li>
+    <li><Link to="#reliable-validation-layer">Writing a reliable validation layer</Link></li>
+    <li><Link to="#emr-serverless-spark-job">The EMR Serverless Spark job</Link></li>
+    <li><Link to="#step-functions-orchestration">Step Functions orchestration</Link></li>
+    <li><Link to="#operating-the-pipeline">Operating the pipeline</Link></li>
+    <li><Link to="#tradeoffs-and-next-steps">Tradeoffs and next steps</Link></li>
+  </ol>
+</nav>
+
 <ArchitectureDiagram />
 
-## Part 1: Why this ingestion boundary and event flow
+<h2 id="ingestion-boundary-and-event-flow">Part 1: What problem does this solve?</h2>
 
 ### The problem
 
-A common data-platform pattern is: files land in S3, and something needs to turn them
-into queryable tables. The challenge is doing it reliably, cheaply, and with enough
-observability to diagnose failures without a dedicated operations team.
+A common problem for most teams who manage large datasets is: how do you reliably ingest files from S3 into 
+a queryable format? The solution needs to be timely, cost-effective, and observable. In an AWS environment, 
+we need a system that can respond to new data sets in S3, transform them into a structured format, and store them 
+in a way that allows for other services like Athena to query them. 
 
-This pipeline targets **S3 Table Buckets**—AWS's managed Apache Iceberg
-offering—as the output format. Iceberg gives us schema evolution, time-travel queries,
-and partition management without maintaining a metastore, while S3 Table Buckets handle
-compaction and snapshotting automatically.
+<br/>
 
-### Design decisions
+In order for it to be timely, the solution needs to be event-driven, so that it can respond to new data as it is uploaded. In order for it to be cost-effective, 
+the solution needs to be serverless, so that it can scale up and down as needed without incurring unnecessary costs. 
+Finally, in order for it to be observable, the orchestration layer needs to provide visibility into the data ingestion 
+process and any errors that may occur so that they can be diagnosed and resolved quickly.
 
-**Prefix-scoped triggers, not bucket-wide**
-The EventBridge rule only fires for objects created under `feed/`. This keeps
-internal artifacts (the PySpark script at `emr/`, run stats at `runs/`)
-from triggering the pipeline recursively.
+### The solution
 
-**EventBridge over S3 event notifications**
-S3 sends events to EventBridge natively once `EventBridgeConfiguration` is enabled
-on the bucket. Compared to direct Lambda triggers or SQS destinations, EventBridge gives us
-content-based routing (the prefix filter), replay capability, and decoupling between the event
-source and the consumer.
+There are 3 layers to this solution architecture:
+  - Storage
+  - Orchestration
+  - Compute
 
-**Step Functions as the orchestrator, not Lambda chaining**
-The pipeline is not a single transform—it validates, fans out across tables, runs Spark
-jobs, collects stats, and emits downstream events. Step Functions makes this observable via
-execution history, adds retry/backoff for free, and removes the 15-minute Lambda timeout
-constraint from the critical path.
+#### Storage
 
-**EMR Serverless over Glue**
-EMR Serverless gives direct control of the Spark session configuration—critical for
-wiring the Iceberg REST catalog (Glue's new REST interface for S3 Table Buckets). It
-also starts from zero and scales back to zero, so you only pay per-job.
+For storage, we have to consider locations for both the incoming source data feed and the transformed data. The transformed data
+will be referenced by downstream services and analytics teams. For this reason, we will use a common and highly optimized data store, 
+Apache Iceberg tables. In this architecture, the source data is stored in a general S3 bucket, while the transformed data is stored 
+in AWS managed Iceberg tables using S3 Table Buckets. This allows for a clear separation of concerns between the raw data and the 
+transformed data.
 
-### Event flow
+We want to give the incoming data feed a clear location in the S3 bucket, so we will make sure that data is uploaded with a prefix 
+`feed/`. This allows us to easily identify objects as new data to be ingested.
 
-The full path from upload to queryable table:
+<StorageDiagram />
 
-1. A Parquet file lands in `s3://<DataBucket>/feed/`
-2. S3 emits an *Object Created* event to EventBridge
-3. An EventBridge rule matches the `feed/` prefix and starts the Step Functions state machine, injecting the object key via an `InputTransformer`
-4. The state machine invokes a Lambda to validate the input and resolve table names
-5. A `Map` state fans out one EMR Serverless Spark job per table
-6. Each Spark job reads Parquet, writes to the Iceberg table, and emits a stats JSON
-7. The state machine reads stats back and emits a `TableLoadComplete` event
-8. If any table fails, the overall execution is marked *Failed*
+#### Orchestration
+
+The orchestration layer is responsible for coordinating the ingestion process. The first step is to detect when new `feed/` objects
+are created. Luckily, the S3 bucket can be configured to send events to EventBridge. Using an EventBridge rule, we can filter for 
+the `feed/` prefix and trigger whichever downstream process we want.
+
+In an AWS environment, I'm a huge fan of the Step Functions service for running multi-step workflows. It provides a visual representation
+of the workflow, built-in error handling, and the ability to run parallel tasks. This checks off the boxes for timeliness, cost-effectiveness, 
+and observability. The Step Functions state machine will be triggered by the EventBridge rule.
+
+<OrchestrationDiagram />
+
+#### Compute
+
+Now that we have a way to detect new data and orchestrate the ingestion process, we need a compute layer to actually perform the 
+transformation. I have found that EMR Serverless and Spark is a great option for this. It gives direct control of the Spark session 
+configuration critical for wiring the Iceberg REST catalog (Glue's new REST interface for S3 Table Buckets).
+
+Normally in step functions that run these long-running jobs, I like to use a Lambda function to validate the input data according to a
+JSON schema and prepare the input for downstream tasks. The user experience is nicer because it means that we can fail faster and cheaper 
+if the input is malformed or if the file doesn't exist (maybe the file was deleted before the state machine started), and the EMR job can
+just focus on the transformation.
+
+<ComputeDiagram />
 
 ---
 
-## Part 2: Infrastructure as code — the SAM template
+<h2 id="infrastructure-as-code">Part 2: Infrastructure as code — the SAM template</h2>
 
 The entire stack is defined in a single `template.yaml` using the AWS SAM
 transform. Here's what gets deployed and why each resource exists.
@@ -127,7 +155,7 @@ where AWS requires it (X-Ray sampling, CloudWatch log delivery).
 
 ---
 
-## Part 3: Writing a reliable validation layer
+<h2 id="reliable-validation-layer">Part 3: Writing a reliable validation layer</h2>
 
 The `ValidateInputFunction` is the first step in the state machine. It serves
 two purposes:
@@ -165,7 +193,7 @@ a corresponding table definition in the SAM template—no orchestration changes.
 
 ---
 
-## Part 4: The EMR Serverless Spark job
+<h2 id="emr-serverless-spark-job">Part 4: The EMR Serverless Spark job</h2>
 
 The `load_data.py` PySpark script is intentionally minimal. Its responsibilities:
 
@@ -212,7 +240,7 @@ as failed.
 
 ---
 
-## Part 5: Step Functions orchestration
+<h2 id="step-functions-orchestration">Part 5: Step Functions orchestration</h2>
 
 The state machine uses JSONata query language (not JSONPath) for data transformations.
 Here's the execution flow:
@@ -257,7 +285,7 @@ abort other tables' processing. The aggregation happens at the end in
 
 ---
 
-## Part 6: Operating the pipeline — deployment, Lake Formation, and costs
+<h2 id="operating-the-pipeline">Part 6: Operating the pipeline — deployment, Lake Formation, and costs</h2>
 
 ### Deployment workflow
 
@@ -307,7 +335,7 @@ table-count-agnostic by design.
 
 ---
 
-## Part 7: Tradeoffs and next steps
+<h2 id="tradeoffs-and-next-steps">Part 7: Tradeoffs and next steps</h2>
 
 ### Current tradeoffs
 
