@@ -90,8 +90,17 @@ and observability. The Step Functions state machine will be triggered by the Eve
 #### Compute
 
 Now that we have a way to detect new data and orchestrate the ingestion process, we need a compute layer to actually perform the 
-transformation. I have found that EMR Serverless and Spark is a great option for this. It gives direct control of the Spark session 
-configuration critical for wiring the Iceberg REST catalog (Glue's new REST interface for S3 Table Buckets).
+transformation. I have found that EMR Serverless and Spark is a great option for this. EMR Serverless gives us direct control over the
+Spark session configuration. This is important because we need to configure an Iceberg REST catalog that connects to our S3 Table Bucket
+through the AWS Glue Iceberg REST endpoint. The S3 Tables integration exposes the bucket through Glue's federated `s3tablescatalog`,
+allowing Spark to read from and write to the Iceberg tables.
+
+Outside of transforming the data, there is an opportunity to capture runtime statistics. This 
+adds to the observability of the ETL pipeline and allows for downstream consumers to react. For example, we can capture the number
+of rows in the source parquet file, averages of certain columns, or any other custom metrics. Downstream services can use this 
+information to trigger notifications or alert on anomalies. For this solution, the job will write the stats as a JSON file to a separate 
+location in the source data S3 bucket, such as `runs/<execution-id>/stats/`. This way we can easily correlate the stats with the 
+specific execution of the state machine, and the relevant source data is also in the same bucket.
 
 Normally in step functions that run these long-running jobs, I like to use a Lambda function to validate the input data according to a
 JSON schema and prepare the input for downstream tasks. The user experience is nicer because it means that we can fail faster and cheaper 
@@ -99,6 +108,11 @@ if the input is malformed or if the file doesn't exist (maybe the file was delet
 just focus on the transformation.
 
 <ComputeDiagram />
+
+<h3 id="whats-next">What's next?</h3>
+
+Now that we have a clear understanding of the problem and the solution, we can dive into the source code and see how the architecture
+is implemented.
 
 ---
 
