@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 
 const tabs = [
   { to: '/', label: 'About' },
-  { to: '/music', label: 'Music' },
+  // { to: '/music', label: 'Music' },
   { to: '/blog', label: 'Blog' },
 ];
 

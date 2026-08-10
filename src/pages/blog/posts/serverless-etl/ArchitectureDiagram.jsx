@@ -1,4 +1,55 @@
-export default function ArchitectureDiagram() {
+export default function ArchitectureDiagram({ thumbnail = false }) {
+  if (thumbnail) {
+    return (
+      <figure className="architecture-diagram architecture-diagram--thumbnail" aria-label="Pipeline architecture diagram (thumbnail)">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 680 120"
+          role="img"
+          aria-labelledby="arch-diagram-thumb-title"
+          style={{ width: '100%', height: 'auto' }}
+        >
+          <title id="arch-diagram-thumb-title">
+            Architecture overview: S3 → EventBridge → Step Functions → EMR Serverless → S3 Table Bucket
+          </title>
+          <defs>
+            <marker id="arrow-thumb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#86d2c2" />
+            </marker>
+          </defs>
+
+          {/* Edges */}
+          <g stroke="#86d2c2" strokeWidth="1.2" fill="none" markerEnd="url(#arrow-thumb)">
+            <path d="M96,60 L130,60" />
+            <path d="M234,60 L270,60" />
+            <path d="M390,60 L426,60" />
+            <path d="M546,60 L582,60" />
+          </g>
+
+          {/* Nodes */}
+          <g>
+            <rect x="10" y="38" width="86" height="44" rx="4" fill="#1c2531" stroke="#2c3949" strokeWidth="1" />
+            <text x="53" y="64" textAnchor="middle" fill="#eff3f8" fontSize="11" fontFamily="Inter, system-ui, sans-serif">S3</text>
+
+            <rect x="134" y="38" width="100" height="44" rx="4" fill="#1c2531" stroke="#2c3949" strokeWidth="1" />
+            <text x="184" y="64" textAnchor="middle" fill="#eff3f8" fontSize="11" fontFamily="Inter, system-ui, sans-serif">EventBridge</text>
+
+            <rect x="274" y="38" width="116" height="44" rx="4" fill="#1c2531" stroke="#86d2c2" strokeWidth="1.2" />
+            <text x="332" y="64" textAnchor="middle" fill="#eff3f8" fontSize="11" fontFamily="Inter, system-ui, sans-serif">Step Functions</text>
+
+            <rect x="430" y="38" width="116" height="44" rx="4" fill="#1c2531" stroke="#2c3949" strokeWidth="1" />
+            <text x="488" y="57" textAnchor="middle" fill="#eff3f8" fontSize="11" fontFamily="Inter, system-ui, sans-serif">EMR</text>
+            <text x="488" y="72" textAnchor="middle" fill="#aab7c7" fontSize="9" fontFamily="Inter, system-ui, sans-serif">Serverless</text>
+
+            <rect x="586" y="38" width="84" height="44" rx="4" fill="#1c2531" stroke="#86d2c2" strokeWidth="1.2" />
+            <text x="628" y="57" textAnchor="middle" fill="#eff3f8" fontSize="11" fontFamily="Inter, system-ui, sans-serif">S3</text>
+            <text x="628" y="72" textAnchor="middle" fill="#aab7c7" fontSize="9" fontFamily="Inter, system-ui, sans-serif">Iceberg</text>
+          </g>
+        </svg>
+      </figure>
+    );
+  }
+
   return (
     <figure className="architecture-diagram" aria-label="Pipeline architecture diagram">
       <svg

@@ -80,8 +80,8 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .credentials h2 { font-size: 1rem; }
 .credentials p:last-child { color: var(--muted); margin: 0; }
 
-.page-intro { max-width: 780px; padding: 6.5rem 0 4.5rem; }
-.page-intro h1 { font-size: clamp(2.8rem, 6vw, 5.25rem); }
+.page-intro { max-width: 780px; padding: 6.5rem 0 2.5rem; }
+.page-intro h1 { font-size: clamp(2.2rem, 5vw, 3.75rem); }
 .audio-note { max-width: 800px; }
 .audio-note > p:last-child, .callout > p:last-child { color: var(--muted); max-width: 700px; }
 .artist-feature { align-items: stretch; background: var(--surface); border: 1px solid var(--border); display: grid; grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.25fr); max-width: 950px; overflow: hidden; }
@@ -111,7 +111,7 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .project-tags li { border: 1px solid var(--border); color: var(--muted); font-size: 0.82rem; padding: 0.2rem 0.55rem; }
 .project-notes-link { margin-top: 1.35rem; }
 .writing-series { display: grid; gap: 1rem; max-width: 800px; }
-.article-tools { margin: 0 0 1.5rem; max-width: 800px; }
+.article-tools { margin: 0 0 1.5rem; }
 .search-label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem; }
 .article-search { background: var(--surface); border: 1px solid var(--border); color: var(--text); font: inherit; padding: 0.75rem 0.9rem; width: 100%; }
 .article-search::placeholder { color: var(--subtle); }
@@ -126,6 +126,9 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .post-outline li + li { margin-top: 0.35rem; }
 .post-keywords { border-top: 1px solid var(--border); color: var(--subtle); font-size: 0.82rem; margin: 1.35rem 0 0; padding-top: 1rem; }
 .post-keywords span { color: var(--accent); font-weight: 700; margin-right: 0.45rem; text-transform: uppercase; }
+.post-card-thumbnail { margin: 1.25rem 0 0; opacity: 0.85; pointer-events: none; }
+.post-card-thumbnail .architecture-diagram { margin: 0; }
+.post-card-thumbnail svg { min-width: 0; }
 .architecture-diagram { margin: 0 0 2rem; overflow-x: auto; }
 .architecture-diagram svg { display: block; min-width: 600px; }
 .part-kicker { align-items: center; color: var(--accent); display: flex; font-size: 0.76rem; font-weight: 750; gap: 0.65rem; letter-spacing: 0.12em; margin: 0 0 0.75rem; text-transform: uppercase; }

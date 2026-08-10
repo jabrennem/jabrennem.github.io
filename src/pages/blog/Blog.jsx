@@ -23,17 +23,15 @@ export default function Blog() {
     <section id="blog">
       <div className="page-intro">
         <p className="eyebrow">Writing</p>
-        <h1>Build notes, in public.</h1>
+        <h1>Personal projects and thoughts</h1>
         <p>
-          Cloud systems, music technology, and production practice all meet here. Project cards show the outcome; these
-          notes document the decisions, tradeoffs, and iterations that lead there—one useful piece at a time.
+          Fullstack cloud systems in AWS, proof of concepts, music technology, etc. Pick a post below to dive in.
         </p>
       </div>
 
       <section className="section" aria-labelledby="writing-series-heading">
         <div className="section-heading">
           <p className="eyebrow" id="writing-series-heading">Upcoming series</p>
-          <p>Each project grows through a sequence of focused posts, not a single retrospective.</p>
         </div>
 
         <div className="article-tools">
@@ -60,11 +58,11 @@ export default function Blog() {
               <p className="status">{post.status}</p>
               <h2>{post.title}</h2>
               <p>{post.description}</p>
-              <ol className="post-outline">
-                {post.outline.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ol>
+              {post.Thumbnail && (
+                <div className="post-card-thumbnail">
+                  <post.Thumbnail />
+                </div>
+              )}
               <p className="post-keywords">
                 <span>Keywords</span> {post.keywords}
               </p>

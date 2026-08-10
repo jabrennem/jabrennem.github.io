@@ -13,10 +13,9 @@ export default function About() {
         <div className="hero-content">
           <p className="eyebrow">Senior Software Engineer · AWS Cloud &amp; Platform Engineering</p>
           <h1>Joshua Brenneman</h1>
-          <p className="hero-copy">Builder at the intersection of cloud, AI, and audio.</p>
+          <p className="hero-copy">A decade of building and pushing myself creatively.</p>
           <p className="supporting-copy">
-            I've spent a decade building data platforms for genomics, scientific computing, and machine learning. Now I'm bringing that depth to AI and creative technology.
-            Outside of work, I write, produce, mix, and master music. It's another way I get to create something from scratch.
+            I've spent my career helping researchers work in genomics, scientific computing, and machine learning. Now I'm bringing that depth to AI and creative technology. Outside of work, I write, produce, mix, and master music — another way I get to create something from scratch.
           </p>
           <div className="actions">
             <a className="button primary resume-download" href="/assets/Joshua-Brenneman-Resume.pdf" target="_blank" rel="noopener noreferrer">
@@ -49,10 +48,8 @@ export default function About() {
           translating them into clear concepts that others can build on.
         </p>
         <p>
-          Music is another form of building for me. I write, produce, mix, and master records, then carry the perspective I
-          gain in the studio back into software—especially music technology and creative tools. Whether I'm shaping a song, a
-          workflow, or a product, I like understanding the problem deeply, making deliberate choices, and refining the result
-          until it earns its place in someone's hands.
+          Music is another form of building for me. I write, produce, mix, and master records — and increasingly,
+          I'm interested in bringing engineering into that world through audio development and creative tools.
         </p>
       </section>
 

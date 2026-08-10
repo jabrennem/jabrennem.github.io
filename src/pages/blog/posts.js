@@ -8,6 +8,7 @@ const posts = Object.values(modules).map((mod) => ({
   ...mod.frontmatter,
   outline: mod.frontmatter.outline || [],
   Component: mod.default,
+  Thumbnail: mod.Thumbnail || null,
 }));
 
 export default posts;
