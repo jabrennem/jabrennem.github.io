@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import About from './pages/About';
-import AudioProduction from './pages/AudioProduction';
+import Music from './pages/Music';
 import Blog from './pages/Blog';
 import BlogPost from './pages/blog/BlogPost';
 
@@ -28,7 +28,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<About />} />
-          <Route path="audio-production" element={<AudioProduction />} />
+          <Route path="music" element={<Music />} />
           <Route path="blog" element={<Blog />} />
           <Route path="blog/:slug" element={<BlogPost />} />
         </Route>

@@ -1,29 +1,47 @@
-export default function AudioProduction() {
+export default function Music() {
+  const capabilities = [
+    {
+      title: 'Songwriting & Arrangement',
+      description: 'Writing original music from initial ideas through full arrangements for live and studio contexts.',
+    },
+    {
+      title: 'Recording & Production',
+      description: 'Tracking, editing, and producing sessions — managing the creative and technical decisions that shape a record.',
+    },
+    {
+      title: 'Mixing & Mastering',
+      description: 'Taking raw recordings to release-ready masters. Learned through years of iteration on my own projects.',
+    },
+    {
+      title: 'Project Coordination',
+      description: 'Scheduling studio time, managing rehearsals, booking shows, and keeping collaborative projects moving with limited time and budget.',
+    },
+    {
+      title: 'Marketing & Release Strategy',
+      description: 'Building a visual identity, planning releases, promoting tracks, and growing an audience independently.',
+    },
+    {
+      title: 'Live Performance',
+      description: 'Playing shows, coordinating with venues and sound engineers, and translating studio work to the stage.',
+    },
+  ];
+
   return (
-    <section id="audio-production">
+    <section id="music">
       <div className="page-intro">
-        <p className="eyebrow">Audio Production</p>
-        <h1>Music is part of how I design.</h1>
+        <p className="eyebrow">Music</p>
+        <h1>Writing, producing, and shipping records.</h1>
         <p>
-          I produce my own music and collaborate with other artists, occasionally providing mixing and mastering. That
-          practical experience shapes how I think about audio workflows and motivates my work on new music-production tools.
+          I've spent years writing, recording, mixing, and mastering my own music. Along the way I've learned
+          how to run a creative project end-to-end — from the first demo to a finished release, from booking a
+          studio to booking a show.
         </p>
       </div>
 
-      <section className="section audio-note">
-        <p className="eyebrow">Practice</p>
-        <h2>A perspective built at the session level.</h2>
-        <p>
-          Working directly in creative tools makes the friction in a workflow visible. It is the starting point for my
-          interest in thoughtful, AI-native music software - tools that support creative decisions without getting in the way
-          of them.
-        </p>
-      </section>
-
       <section className="section" aria-labelledby="playlist-heading">
-        <p className="eyebrow">Selected listening</p>
-        <h2 id="playlist-heading">Music from the studio.</h2>
-        <p className="playlist-intro">A selection of tracks that reflects my production work and musical direction.</p>
+        <p className="eyebrow">Recordings</p>
+        <h2 id="playlist-heading">What came out of the studio.</h2>
+        <p className="playlist-intro">Tracks I wrote, produced, and engineered.</p>
         <div className="spotify-embed">
           <iframe
             title="Joshua Brenneman audio production playlist on Spotify"
@@ -42,12 +60,27 @@ export default function AudioProduction() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Open playlist in Spotify <span aria-hidden="true">↗</span>
+          Open in Spotify <span aria-hidden="true">↗</span>
         </a>
       </section>
 
+      <section className="section" aria-labelledby="music-capabilities-heading">
+        <div className="section-heading">
+          <p className="eyebrow" id="music-capabilities-heading">Capabilities</p>
+          <p>What goes into getting a record from an idea to someone's headphones.</p>
+        </div>
+        <div className="capability-grid">
+          {capabilities.map((cap, i) => (
+            <article key={i}>
+              <h2>{cap.title}</h2>
+              <p>{cap.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="section" aria-labelledby="tensor-heading">
-        <p className="eyebrow">Personal music project</p>
+        <p className="eyebrow">Project spotlight</p>
         <article className="artist-feature">
           <div className="artist-copy">
             <img
@@ -59,9 +92,10 @@ export default function AudioProduction() {
             />
             <h2 id="tensor-heading">Tensor</h2>
             <p>
-              Tensor is my personal music project, produced independently. Writing music and collaborating with other
-              producers and band members through the project is how I learned mixing and mastering. It is where I put
-              the production ideas and audio workflows I explore into practice.
+              Tensor is a band I started and run independently. It's where all of the above comes together —
+              writing the songs, producing the recordings, coordinating four people's schedules for studio and
+              rehearsal, booking shows, handling promotion, and shipping releases on a timeline with no external
+              pressure to do so.
             </p>
           </div>
           <figure className="artist-photo">
@@ -69,9 +103,9 @@ export default function AudioProduction() {
               src="/assets/media/tensor-crowd-shot.jpg"
               width="1440"
               height="961"
-              alt="Tensor with their audience after a live performance"
+              alt="Tensor performing live with their audience"
             />
-            <figcaption>Tensor and their audience after a live performance.</figcaption>
+            <figcaption>Tensor live.</figcaption>
           </figure>
         </article>
       </section>
@@ -115,7 +149,7 @@ export default function AudioProduction() {
               src="/assets/media/tensor-bts-guitar.jpg"
               width="1329"
               height="698"
-              alt="A guitarist silhouetted under a spotlight during a Tensor behind-the-scenes shoot"
+              alt="A guitarist silhouetted under a spotlight during a behind-the-scenes shoot"
               loading="lazy"
             />
             <figcaption>Behind the scenes.</figcaption>
