@@ -1,6 +1,6 @@
 const projects = [
   {
-    status: 'In development',
+    status: '',
     title: 'Serverless ETL',
     slug: 'serverless-etl',
     description: 'An event-driven data-ingestion pipeline that turns files arriving under an S3 feed/ prefix into queryable Apache Iceberg data.',
