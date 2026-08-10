@@ -152,11 +152,19 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .blog-article dl.design-decisions { margin: 1.25rem 0; }
 .blog-article dl.design-decisions dt { color: var(--accent-strong); font-weight: 600; margin-top: 1rem; }
 .blog-article dl.design-decisions dd { color: var(--muted); margin: 0.3rem 0 0 0; max-width: 700px; }
-.blog-article pre { background: var(--surface); border: 1px solid var(--border); overflow-x: auto; padding: 1.25rem; margin: 1rem 0; }
+.blog-article pre { overflow-x: auto; padding: 1.25rem; margin: 1rem 0; border-radius: 6px; }
+.blog-article pre > code { display: block; }
 .blog-article code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.85rem; }
 .blog-article p code { background: var(--surface-soft); padding: 0.15em 0.35em; border-radius: 3px; }
+.blog-article [data-rehype-pretty-code-figure] pre { border: 1px solid var(--border); }
 .blog-article ol, .blog-article ul { color: var(--muted); max-width: 700px; padding-left: 1.25rem; }
 .blog-article li + li { margin-top: 0.4rem; }
+.blog-article table { border-collapse: collapse; margin: 1.5rem 0; max-width: 800px; width: 100%; }
+.blog-article thead { border-bottom: 2px solid var(--accent); }
+.blog-article th { color: var(--accent-strong); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; padding: 0.75rem 1rem; text-align: left; text-transform: uppercase; }
+.blog-article td { border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.93rem; padding: 0.7rem 1rem; }
+.blog-article tbody tr:last-child { background: var(--surface); }
+.blog-article tbody tr:last-child td { border-bottom: none; color: var(--text); font-weight: 600; }
 .article-pagination { display: flex; gap: 0.5rem; margin-top: 1.5rem; }
 .article-pagination [aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #07100f; }
 .site-footer { border-top: 1px solid var(--border); color: var(--subtle); display: flex; font-size: 0.9rem; justify-content: space-between; margin-top: 4rem; padding-top: 1.6rem; }

@@ -29,11 +29,8 @@ Lambda, and EMR Serverless.
   <ol>
     <li><Link to="#ingestion-boundary-and-event-flow">What problem does this solve?</Link></li>
     <li><Link to="#infrastructure-as-code">Infrastructure as code</Link></li>
-    <li><Link to="#reliable-validation-layer">Writing a reliable validation layer</Link></li>
-    <li><Link to="#emr-serverless-spark-job">The EMR Serverless Spark job</Link></li>
-    <li><Link to="#step-functions-orchestration">Step Functions orchestration</Link></li>
-    <li><Link to="#operating-the-pipeline">Operating the pipeline</Link></li>
-    <li><Link to="#tradeoffs-and-next-steps">Tradeoffs and next steps</Link></li>
+    <li><Link to="#operating-the-pipeline">Deploy and run the workflow</Link></li>
+    <li><Link to="#tradeoffs-and-next-steps">Production considerations and future additions</Link></li>
   </ol>
 </nav>
 
@@ -144,81 +141,256 @@ just focus on the transformation.
 
 ---
 
+<br/>
+
+<p className="part-kicker"><span>The Source Code</span></p>
 <h2 id="infrastructure-as-code">Part 2: Infrastructure as code — the SAM template</h2>
 
 The entire stack is defined in a single `template.yaml` using the AWS SAM
-transform. Here's what gets deployed and why each resource exists.
+transform. This section walks through what gets deployed and why.
 
-### Security foundations
+<div className="architecture-layer-heading">
+  <span>01</span>
+  <h4>Security foundations</h4>
+</div>
 
-- **KMS key with auto-rotation** — All data at rest in the data bucket is encrypted with a customer-managed key. Bucket-key is enabled to reduce KMS API costs.
-- **Bucket policy** — Denies any non-SSL traffic and scopes access to the AWS Organization via `aws:PrincipalOrgID`. No public access is possible.
-- **Versioning + lifecycle** — Non-current object versions expire after 30 days, giving a recovery window without unbounded storage growth.
-- **Access logging** — The bucket logs to a separate logging bucket with a stack-specific prefix.
+- **KMS key with auto-rotation** — Customer-managed encryption for all data at rest; bucket-key enabled to reduce API costs.
+- **S3 Bucket policy** — Denies non-SSL traffic; scopes access to the AWS Organization via `aws:PrincipalOrgID`.
+- **Versioning + lifecycle** — 30-day non-current version expiry balances recovery with storage costs.
+- **Access logging** — Logs to a separate bucket with a stack-specific prefix.
+- **IAM: least-privilege per service** — Separate roles per actor, ARNs scoped as tightly as possible.
+- **LakeFormation enabled** — Row/column-level access control on Glue Catalog resources.
 
-### S3 Table Bucket resources
+<div className="architecture-layer-heading">
+  <span>02</span>
+  <h4>Storage</h4>
+</div>
 
-Three CloudFormation resources define the Iceberg destination:
+### KMS Key Encryption
 
-- `AWS::S3Tables::TableBucket` — The bucket itself
-- `AWS::S3Tables::Namespace` — A `default` namespace
-- `AWS::S3Tables::Table` — A `test_data` table with a declared Iceberg schema (id: long, name: string, amount: double)
+A customer-managed KMS key encrypts every object in the data bucket. Auto-rotation is
+enabled and the bucket uses S3 Bucket Key to reduce per-request KMS calls.
 
-Defining the table in CloudFormation means it exists before the first pipeline run—no
-"create table if not exists" logic in Spark needed.
+```yaml
+EncryptionKey:
+  Type: AWS::KMS::Key
+  Properties:
+    Description: KMS key for S3 Bucket
+    EnableKeyRotation: true
+```
 
-### EMR Serverless application
+### DataBucket
 
-The `EmrApp` resource creates a Spark application on EMR release 7.8.0 (ARM64).
-Auto-start and auto-stop are both enabled with a 2-minute idle timeout. This means:
+The data bucket is the landing zone for source files and run artifacts. EventBridge
+notifications are enabled so downstream rules can react to `feed/` uploads. Versioning,
+public access blocks, logging, and lifecycle rules are all configured inline.
 
-- No pre-warmed capacity sitting idle between runs
-- Cold-start latency only on the first job after idle timeout
-- Zero ongoing cost when the pipeline isn't running
+```yaml
+DataBucket:
+  Type: AWS::S3::Bucket
+  Properties:
+    NotificationConfiguration:
+      EventBridgeConfiguration:
+        EventBridgeEnabled: true
+    BucketEncryption:
+      ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: aws:kms
+            KMSMasterKeyID: !GetAtt EncryptionKey.Arn
+          BucketKeyEnabled: true
+    VersioningConfiguration:
+      Status: Enabled
+    PublicAccessBlockConfiguration:
+      BlockPublicAcls: true
+      BlockPublicPolicy: true
+      IgnorePublicAcls: true
+      RestrictPublicBuckets: true
+    LoggingConfiguration:
+      DestinationBucketName: !Ref LoggingBucketName
+      LogFilePrefix: !Sub "${AWS::StackName}/"
+    LifecycleConfiguration:
+      Rules:
+        - Id: ExpireNonCurrentVersions
+          Status: Enabled
+          NoncurrentVersionExpiration:
+            NoncurrentDays: 30
+```
 
-### IAM: least-privilege per service
+The bucket policy denies insecure transport and scopes access to the organization:
 
-The template defines separate roles for each actor:
+```yaml
+BucketPolicy:
+  Type: AWS::S3::BucketPolicy
+  Properties:
+    Bucket: !Ref DataBucket
+    PolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: DenyInsecureTransport
+          Effect: Deny
+          Principal: "*"
+          Action: "s3:*"
+          Resource:
+            - !GetAtt DataBucket.Arn
+            - !Sub "${DataBucket.Arn}/*"
+          Condition:
+            Bool:
+              aws:SecureTransport: "false"
+        - Sid: AllowOrganizationAccess
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:ListBucket
+            - s3:GetBucketLocation
+          Resource:
+            - !GetAtt DataBucket.Arn
+            - !Sub "${DataBucket.Arn}/*"
+          Condition:
+            StringEquals:
+              aws:PrincipalOrgID: !Ref PrincipalOrgId
+```
 
-**EmrAppRole**
-Allows the Spark job to read Parquet from the data bucket, write stats to `runs/`,
-interact with the S3 Table Bucket via `s3tables:*` actions, read/write via the
-Glue Iceberg catalog, and call `lakeformation:GetDataAccess`.
+### S3 Tables Resources
 
-**StateMachineRole**
-Can invoke the validation Lambda, start/get/cancel EMR job runs, pass the EMR role,
-read stats objects, emit EventBridge events, and write execution logs.
+Three CloudFormation resources define the S3 Table Bucket destination. We define the 
+  - Table Bucket
+  - The Namespace which is similar to a Glue Database
+  - The table which matches Glue Table
 
-**EventBridgeStateMachineRole**
-Only permission: `states:StartExecution` on the state machine ARN.
+I chose to declare the table in the template to make this service simple. It also means it exists before 
+the first pipeline run, so there is no "create table if notexists" logic in Spark.
 
-Every Resource ARN is scoped as tightly as possible—no `Resource: "*"` except
-where AWS requires it (X-Ray sampling, CloudWatch log delivery).
+```yaml
+IcebergTableBucket:
+  Type: AWS::S3Tables::TableBucket
+  Properties:
+    TableBucketName: !Ref TableBucketName
 
----
+IcebergDefaultNamespace:
+  Type: AWS::S3Tables::Namespace
+  Properties:
+    TableBucketARN: !GetAtt IcebergTableBucket.TableBucketARN
+    Namespace: default
 
-<h2 id="reliable-validation-layer">Part 3: Writing a reliable validation layer</h2>
+# test table for this service with a simple schema
+IcebergTestDataTable:
+  Type: AWS::S3Tables::Table
+  DependsOn: IcebergDefaultNamespace
+  Properties:
+    TableBucketARN: !GetAtt IcebergTableBucket.TableBucketARN
+    Namespace: default
+    TableName: test_data
+    OpenTableFormat: ICEBERG
+    IcebergMetadata:
+      IcebergSchema:
+        SchemaFieldList:
+          - Name: id
+            Type: long
+            Required: true
+          - Name: name
+            Type: string
+            Required: false
+          - Name: amount
+            Type: double
+            Required: false
+```
 
-The `ValidateInputFunction` is the first step in the state machine. It serves
-two purposes:
+<div className="architecture-layer-heading">
+  <span>03</span>
+  <h4>Compute</h4>
+</div>
 
-1. **Schema validation** — Uses AWS Lambda Powertools' `validate()` against a JSON Schema to reject malformed inputs before any compute runs.
-2. **Table name resolution** — Maps source file paths to Iceberg table names using regex patterns defined in `file_mapping.json`.
+### EMR Serverless App
 
-### Why separate validation from orchestration?
+A Spark application on EMR release 7.8.0 (ARM64). Auto-start and auto-stop with a
+2-minute idle timeout means zero cost when the pipeline isn't running.
 
-The state machine's `InputTransformer` constructs a payload from the EventBridge
-event. If that payload is malformed (missing key, wrong type), the EMR job would start and
-then fail after provisioning a Spark cluster. By validating first in a sub-second Lambda
-invocation, we fail fast and cheaply.
+```yaml
+EmrApp:
+  Type: AWS::EMRServerless::Application
+  Properties:
+    ReleaseLabel: emr-7.8.0
+    Architecture: ARM64
+    Type: Spark
+    AutoStartConfiguration:
+      Enabled: true
+    AutoStopConfiguration:
+      Enabled: true
+      IdleTimeoutMinutes: 2
+```
 
-### Pattern-based table resolution
+#### PySpark script highlights
 
-The EventBridge rule passes only the S3 object key. The Lambda resolves which Iceberg table
-to write to by matching the key against regex patterns:
+The `load_data.py` script is intentionally minimal: read Parquet, write to Iceberg
+via `INSERT OVERWRITE`, and emit a stats JSON for the orchestrator. Catalog configuration
+lives entirely in `SparkSubmitParameters`, keeping the script portable.
+
+```python
+def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
+    iceberg_table = f"s3tablesbucket.{namespace}.{table_name}"
+
+    spark = (
+        SparkSession.builder
+        .appName(f"S3TableBucket-Import-{table_name}")
+        .getOrCreate()
+    )
+
+    df = spark.read.parquet(input_path)
+    count = df.count()
+
+    df.createOrReplaceTempView("source_data")
+    spark.sql(f"INSERT OVERWRITE {iceberg_table} SELECT * FROM source_data")
+
+    if stats_s3_uri:
+        _write_stats_file(stats_s3_uri, input_path, catalog_id,
+                          namespace, table_name, count)
+    spark.stop()
+    return 0
+```
+
+The stats file written to `runs/<execution-id>/stats/<table>.json` is read back by
+the state machine so structured metadata flows downstream without parsing Spark logs.
+
+### Validate Input Lambda
+
+A sub-second Lambda that fails the execution fast and cheap before EMR provisioning.
+It validates the EventBridge payload against a JSON Schema and resolves which Iceberg
+table to target using regex patterns from `file_mapping.json`.
+
+```yaml
+ValidateInputFunction:
+  Type: AWS::Serverless::Function
+  Properties:
+    Handler: validate_input.handler
+    CodeUri: lambda/validate_input/
+```
+
+#### Handler highlights
+
+```python
+@logger.inject_lambda_context
+def handler(event, context):
+    validate(event=event, schema=INPUT_SCHEMA)
+
+    for mapping in event["SourceFileTableNameMapping"]:
+        if "TableName" not in mapping:
+            table_name = resolve_table_name(
+                mapping["SourceFile"], FILE_PATTERN_MAPPINGS
+            )
+            mapping["TableName"] = table_name
+
+    return event
+```
+
+Table resolution matches the S3 key against regex patterns sorted by specificity
+(longest first). Adding a new ingestion target requires only a new entry in
+`file_mapping.json` and a corresponding table resource in the SAM template.
 
 ```json
-// file_mapping.json
 {
   "mappings": [
     {"tableName": "test_data", "filePattern": ".*/test-data\\.parquet$"}
@@ -226,168 +398,305 @@ to write to by matching the key against regex patterns:
 }
 ```
 
-Patterns are sorted by specificity (longest first) so more specific rules win. If no
-pattern matches, the Lambda raises an error and the execution fails immediately with a
-clear diagnostic message.
+<div className="architecture-layer-heading">
+  <span>04</span>
+  <h4>Orchestration</h4>
+</div>
 
-This design means adding a new table requires only a new entry in the mapping file and
-a corresponding table definition in the SAM template—no orchestration changes.
+### State Machine
 
----
+The state machine uses JSONata (not JSONPath) for data transformations and the
+`.sync` integration pattern so Step Functions polls EMR until completion — no custom
+polling loop needed.
 
-<h2 id="emr-serverless-spark-job">Part 4: The EMR Serverless Spark job</h2>
+#### ASL highlights
 
-The `load_data.py` PySpark script is intentionally minimal. Its responsibilities:
-
-1. Read a single Parquet file from S3
-2. Write its contents to the target Iceberg table via `INSERT OVERWRITE`
-3. Write a JSON stats file back to S3 for the orchestrator to consume
-
-### Catalog configuration
-
-The Spark session is configured entirely via `SparkSubmitParameters` in the state
-machine definition—not in the Python code. This keeps the script portable and testable
-outside EMR:
-
-```
---conf spark.sql.catalog.s3tablesbucket=org.apache.iceberg.spark.SparkCatalog
---conf spark.sql.catalog.s3tablesbucket.type=rest
---conf spark.sql.catalog.s3tablesbucket.uri=https://glue.<region>.amazonaws.com/iceberg
---conf spark.sql.catalog.s3tablesbucket.warehouse=<account>:s3tablescatalog/<bucket>
---conf spark.sql.catalog.s3tablesbucket.rest.sigv4-enabled=true
---conf spark.sql.catalog.s3tablesbucket.rest.signing-name=glue
-```
-
-This uses Glue's REST catalog endpoint—the integration path for S3 Table Buckets.
-SigV4 signing is required because the endpoint is IAM-authenticated, not token-based.
-
-### Stats as a coordination mechanism
-
-After writing data, the script writes a small JSON file to
-`s3://<bucket>/runs/<execution-id>/stats/<table>.json`:
+The Map state iterates over resolved table mappings. Each iteration runs the full
+EMR → stats → emit pipeline independently. Per-item `Catch` blocks route failures
+to a "Fail Item" pass state so one table's failure doesn't abort others.
 
 ```json
-{
-  "table": "test_data",
-  "rowCount": 1000,
-  "input": "<bucket>/feed/test-data.parquet",
-  "output": "<catalog-id>/default.test_data"
+"Load Tables": {
+  "Type": "Map",
+  "Items": "{% $states.input.SourceFileTableNameMapping %}",
+  "ItemProcessor": {
+    "ProcessorConfig": { "Mode": "INLINE" },
+    "StartAt": "Load Data",
+    "States": {
+      "Load Data": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+        "Retry": [{
+          "ErrorEquals": [
+            "EmrServerless.EmrServerlessException",
+            "EMRServerless.AWSEMRServerlessException",
+            "EMRServerless.ValidationException"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 10,
+          "BackoffRate": 2
+        }],
+        "Catch": [{
+          "ErrorEquals": ["States.ALL"],
+          "Next": "Fail Item"
+        }],
+        "Next": "Get Stats Object"
+      }
+    }
+  }
 }
 ```
 
-The state machine reads this file in the "Get Stats Object" step to propagate
-structured metadata downstream without parsing Spark logs. If the stats file is missing
-after a successful EMR job (shouldn't happen, but defense in depth), the table is marked
-as failed.
+After the Map completes, a Choice state counts failed items — if any table has
+`status: "failed"`, the execution fails. This makes partial success visible in the
+Step Functions console.
+
+```json
+"Check Table Results": {
+  "Type": "Choice",
+  "Choices": [{
+    "Condition": "{% $count($states.input[status = 'failed']) > 0 %}",
+    "Next": "Fail"
+  }],
+  "Default": "Succeed"
+}
+```
+
+### Event Rule and Input Transformer
+
+An EventBridge rule filters for `Object Created` events under the `feed/` prefix
+and invokes the state machine via an `InputTransformer` that extracts the S3 key
+into the expected payload shape.
+
+```yaml
+FeedUploadRule:
+  Type: AWS::Events::Rule
+  Properties:
+    EventPattern:
+      source:
+        - aws.s3
+      detail-type:
+        - Object Created
+      detail:
+        bucket:
+          name:
+            - !Ref DataBucket
+        object:
+          key:
+            - prefix: "feed/"
+    Targets:
+      - Id: LoadDataStateMachine
+        Arn: !GetAtt StateMachine.Arn
+        RoleArn: !GetAtt EventBridgeStateMachineRole.Arn
+        InputTransformer:
+          InputPathsMap:
+            key: $.detail.object.key
+          InputTemplate: |
+            {
+              "SourceFileTableNameMapping": [{"SourceFile": "<key>"}],
+              "Event": {"source": "aws.s3", "detail-type": "Object Created", "key": "<key>"}
+            }
+```
+
+The `EventBridgeStateMachineRole` has a single permission — `states:StartExecution`
+scoped to the state machine ARN.
 
 ---
 
-<h2 id="step-functions-orchestration">Part 5: Step Functions orchestration</h2>
+<br/>
 
-The state machine uses JSONata query language (not JSONPath) for data transformations.
-Here's the execution flow:
+<h2 id="operating-the-pipeline">Part 3: Deploy and run the workflow</h2>
 
-### State-by-state breakdown
+<div className="architecture-layer-heading">
+  <span>01</span>
+  <h4>Commands</h4>
+</div>
 
-**Validate Input**
-Invokes the Lambda synchronously. The entire event payload is forwarded. On success,
-the Lambda's response (enriched with resolved table names) replaces the state input.
-
-**Load Tables (Map)**
-Iterates over `SourceFileTableNameMapping`. Each item gets its own
-sub-execution with the full EMR → stats → emit → succeed/fail pipeline.
-Inline mode means up to 40 concurrent iterations.
-
-**Load Data (EMR job)**
-Uses the `emr-serverless:startJobRun.sync` integration—Step Functions
-polls EMR until the job completes, so no custom polling loop is needed. Retries
-EMR-specific transient errors with exponential backoff (15s base, 2x rate, 10 attempts
-max = ~4.25 hours of retry budget).
-
-**Get Stats Object**
-Direct SDK integration: calls `s3:getObject` and parses the JSON body using
-JSONata's `$parse()`.
-
-**Emit Job Complete**
-Puts a structured `TableLoadComplete` event on the default EventBridge bus.
-Downstream consumers (Athena refresh, notifications, audit) can subscribe independently.
-Event emission failure is caught and treated as non-fatal.
-
-**Check Table Results**
-A `Choice` state that counts failed items. If any table has
-`status: "failed"`, the execution fails. This makes partial success visible
-in the Step Functions console.
-
-### Error handling philosophy
-
-Each step in the Map iteration has its own `Catch` block that captures the error
-and routes to a "Fail Item" pass state. This means one table's failure doesn't
-abort other tables' processing. The aggregation happens at the end in
-"Check Table Results".
-
----
-
-<h2 id="operating-the-pipeline">Part 6: Operating the pipeline — deployment, Lake Formation, and costs</h2>
-
-### Deployment workflow
-
-Build and deploy are standard SAM:
+Build and deploy are standard SAM. A `post-deploy.sh` script handles uploading the
+PySpark entrypoint to S3 and applying Lake Formation grants that CloudFormation can't
+express natively.
 
 ```bash
 sam build && sam deploy
+./scripts/post-deploy.sh
 ```
 
-A `post-deploy.sh` script handles two things CloudFormation can't do natively:
+The post-deploy script is idempotent — safe to re-run on every deploy:
 
-1. **Upload the PySpark script** to `s3://<bucket>/emr/load_data.py`. EMR Serverless reads its entrypoint from S3—it's not bundled in the deployment artifact.
-2. **Apply Lake Formation grants** at the catalog, database, and table level. The `AWS::LakeFormation::PrincipalPermissions` resource doesn't support the compound catalog IDs that S3 Table Buckets use, so these are applied via CLI. The grants are idempotent.
+```bash
+# Upload PySpark entrypoint
+aws s3 cp emr/load_data.py "s3://${DATA_BUCKET}/emr/load_data.py"
 
-### Lake Formation integration
+# Apply Lake Formation grants (catalog → database → table)
+aws lakeformation grant-permissions \
+  --principal "DataLakePrincipalIdentifier=${EMR_ROLE_ARN}" \
+  --resource '{"Catalog":{"Id":"<catalog-id>"}}' \
+  --permissions '["CREATE_DATABASE", "DESCRIBE"]'
+```
 
-If your account uses Lake Formation with restrictive defaults (i.e. `IAMAllowedPrincipals`
-removed from default database creators), the EMR role needs explicit grants:
+{/* TODO: screenshot of successful deploy in terminal */}
 
-- **Catalog**: `CREATE_DATABASE`, `DESCRIBE`
-- **Database**: `DESCRIBE`, `ALTER`, `CREATE_TABLE`
-- **Table (wildcard)**: `SELECT`, `INSERT`, `DESCRIBE`, `ALTER`, `DROP`
+<div className="architecture-layer-heading">
+  <span>02</span>
+  <h4>Live Test</h4>
+</div>
 
-### Cost model
+### Test data
 
-The pipeline is designed to cost effectively nothing at rest:
+The test file is a minimal 3-row Parquet file (1.3 KB) with the same schema as the
+Iceberg table declared in the SAM template:
 
-- **EMR Serverless**: Pay per vCPU-hour and GB-hour only while a job runs
-- **Step Functions**: $0.025 per 1,000 state transitions
-- **Lambda**: Sub-second invocation, ARM64, within free tier for light use
-- **EventBridge**: $1/million events
-- **S3 Table Bucket**: Standard S3 storage pricing + Iceberg metadata overhead
+<table>
+  <thead>
+    <tr><th>id</th><th>name</th><th>amount</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>Alice</td><td>100.50</td></tr>
+    <tr><td>2</td><td>Bob</td><td>200.75</td></tr>
+    <tr><td>3</td><td>Charlie</td><td>350.00</td></tr>
+  </tbody>
+</table>
 
-The dominant cost driver is EMR Serverless compute time. The 2-minute auto-stop timeout
-ensures you're not paying for idle clusters between batch windows.
+If you want to generate your own test file, there's a script in the repo at
+`scripts/generate_test_data.py`:
 
-### Extending the pipeline
+```python
+import pyarrow as pa
+import pyarrow.parquet as pq
 
-Adding a new ingestion target requires three changes:
+table = pa.table({
+    "id": pa.array([1, 2, 3], type=pa.int64()),
+    "name": pa.array(["Alice", "Bob", "Charlie"], type=pa.string()),
+    "amount": pa.array([100.50, 200.75, 350.00], type=pa.float64()),
+})
 
-1. Add a regex pattern to `file_mapping.json`
-2. Add an `AWS::S3Tables::Table` resource to the SAM template
-3. Redeploy
+pq.write_table(table, "test-data.parquet")
+```
 
-No changes to the state machine, Lambda code, or PySpark script. The architecture is
-table-count-agnostic by design.
+### Trigger command
+
+The `trigger.sh` script uploads a Parquet file to the `feed/` prefix, which fires
+the EventBridge rule and starts the state machine.
+
+```bash
+./scripts/trigger.sh test-data.parquet
+# → Uploading test-data.parquet to s3://<bucket>/feed/...
+# → Pipeline triggered. Monitor execution in the Step Functions console.
+```
+
+Below you can see the uploaded parquet file in S3 under the `feed/` prefix.
+
+<figure>
+  <img src="/assets/media/serverless-etl/s3-test-data-object.png" alt="S3 console showing the uploaded test-data.parquet file in the feed/ prefix of the data bucket." style={{maxWidth: '720px', width: '100%'}} />
+</figure>
+
+### Eventbridge and State Machine Input
+
+The EventBridge `InputTransformer` constructs this payload from the S3 event:
+
+```json
+{
+  "SourceFileTableNameMapping": [
+    {"SourceFile": "feed/test-data.parquet"}
+  ],
+  "Event": {
+    "source": "aws.s3",
+    "detail-type": "Object Created",
+    "key": "feed/test-data.parquet"
+  }
+}
+```
+
+As the workflow runs through each step, you can see successful states as green. The
+image below is what a successful execution looks like.
+
+<figure>
+  <img src="/assets/media/serverless-etl/state-machine-succeeded.png" alt="Step Functions Graph view showing a succeeded execution — Validate Input, Load Tables map with Load Data, Get Stats Object, Emit Job Complete, Item Succeeded, then Check Table Results routing to Succeed." style={{maxWidth: '480px', width: '100%'}} />
+</figure>
+
+<div className="architecture-layer-heading">
+  <span>03</span>
+  <h4>Cost Breakdown</h4>
+</div>
+
+The pipeline costs effectively nothing at rest. Here's the actual cost of one test
+execution processing a 1.3 KB Parquet file through 8 state transitions in ~2 min 37 s
+total duration:
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Usage</th>
+      <th>Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Step Functions</strong></td>
+      <td>8 state transitions × $0.000025</td>
+      <td>$0.000200</td>
+    </tr>
+    <tr>
+      <td><strong>Lambda</strong> (ARM64, 128 MB)</td>
+      <td>554 ms duration, 1 invocation</td>
+      <td>$0.000001</td>
+    </tr>
+    <tr>
+      <td><strong>EMR Serverless</strong> (ARM64)</td>
+      <td>~2 min 36 s, 4 vCPU / 16 GB</td>
+      <td>~$0.013</td>
+    </tr>
+    <tr>
+      <td><strong>S3</strong></td>
+      <td>2 PUTs + 3 GETs + ~4 KB stored</td>
+      <td>$0.000011</td>
+    </tr>
+    <tr>
+      <td><strong>EventBridge</strong></td>
+      <td>2 events (S3 trigger + custom)</td>
+      <td>$0.000001</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td></td>
+      <td><strong>~$0.013</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+The cost is dominated almost entirely by EMR Serverless compute time. Everything else
+rounds to effectively zero. The 2-minute auto-stop idle timeout means the EMR application
+shuts down immediately after the job completes, so there's no ongoing cost between runs.
+
+For context, Step Functions provides 4,000 free state transitions per month and Lambda
+includes 1M requests + 400,000 GB-seconds free — so for light development and testing,
+those services are literally $0.
+
+### Cost attribution
+
+The stack is tagged with an application identifier, which means all resources created by
+CloudFormation inherit the tag. This integrates with AWS Cost Explorer, AWS Budgets, and
+Cost Allocation Tags to track spend per pipeline — useful when you're running multiple
+workloads in the same account and want to attribute costs back to individual services or
+teams.
 
 ---
 
-<h2 id="tradeoffs-and-next-steps">Part 7: Tradeoffs and next steps</h2>
+<br/>
 
-### Current tradeoffs
+<h2 id="tradeoffs-and-next-steps">Part 4: Production considerations and future additions</h2>
+
+### Production considerations
 
 - **INSERT OVERWRITE, not MERGE** — The current job does a full overwrite. For append-only feeds this is fine; for update-heavy data you'd want an upsert/merge strategy with a deduplication key.
 - **Single-file-per-event granularity** — Each file triggers a full execution. For high-frequency small files, a micro-batching strategy (SQS buffer + scheduled trigger) would reduce per-file overhead.
 - **No dead-letter queue** — Failed events currently surface only in Step Functions execution history. A DLQ on the EventBridge target would make unprocessable events more discoverable.
+- **S3 Bucket Deletion Policy** — Set the DeletionPolicy of the S3 buckets to Retain in production so data is not lost when the stack is deleted.
+- **Extending to multiple tables** — Adding a new ingestion target requires only a regex pattern in `file_mapping.json` and an `AWS::S3Tables::Table` resource in the SAM template. No changes to the state machine, Lambda code, or PySpark script — the architecture is table-count-agnostic by design.
 
-### Possible next iterations
+### Future additions
 
-- Schema evolution handling—detect new columns in Parquet and evolve the Iceberg schema
+- Schema evolution handling — detect new columns in Parquet and evolve the Iceberg schema
 - Data quality checks (Great Expectations or Deequ) as a pre-write gate
-- Cost attribution tagging on EMR job runs
 - Multi-account deployment via AWS Organizations + StackSets
