@@ -20,6 +20,11 @@ export default function BlogPost() {
   if (post.Component) {
     return (
       <article className="blog-article">
+        <nav className="breadcrumb" aria-label="Breadcrumb">
+          <Link to="/blog">Blog</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{post.title}</span>
+        </nav>
         <div className="page-intro">
           <p className="eyebrow">{post.status}</p>
           <h1>{post.title}</h1>
@@ -35,6 +40,11 @@ export default function BlogPost() {
   // Fallback: outline-only placeholder for posts without content yet
   return (
     <article>
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <Link to="/blog">Blog</Link>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{post.title}</span>
+      </nav>
       <div className="page-intro">
         <p className="eyebrow">Working draft · {post.status}</p>
         <h1>{post.title}</h1>

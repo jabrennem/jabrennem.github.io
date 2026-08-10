@@ -141,7 +141,14 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .next-steps-callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); margin: 2.75rem 0; max-width: 900px; padding: 1.5rem 1.7rem; }
 .next-steps-callout .eyebrow { margin-bottom: 0.55rem; }
 .next-steps-callout > p:last-child { color: var(--muted); margin-bottom: 0; max-width: 700px; }
+.breadcrumb { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: var(--muted); margin: 0; padding: 2rem 0 0; }
+.breadcrumb a { color: var(--accent); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb [aria-current="page"] { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 400px; }
+.breadcrumb + .page-intro { padding-top: 2rem; padding-bottom: 2rem; }
+.breadcrumb + .page-intro + .section { margin-top: 1.5rem; }
 .blog-article h3 { color: var(--text); font-size: 1.05rem; margin: 2rem 0 0.75rem; }
+.blog-article .table-of-contents { margin-top: 2.5rem; }
 .blog-article dl.design-decisions { margin: 1.25rem 0; }
 .blog-article dl.design-decisions dt { color: var(--accent-strong); font-weight: 600; margin-top: 1rem; }
 .blog-article dl.design-decisions dd { color: var(--muted); margin: 0.3rem 0 0 0; max-width: 700px; }

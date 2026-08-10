@@ -1,7 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import experience from '../data/experience';
 import capabilities from '../data/capabilities';
+import projects from '../data/projects';
 
 export default function About() {
+  const navigate = useNavigate();
+
   return (
     <section id="about">
       <div className="hero">
@@ -87,6 +91,48 @@ export default function About() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="section" aria-labelledby="projects-heading">
+        <div className="section-heading">
+          <p className="eyebrow" id="projects-heading">Planned case studies</p>
+          <p>Small, deployable AWS projects that you can deploy in your own environment.</p>
+        </div>
+        <div className="project-stack">
+          {projects.map((project, i) => (
+            <article className="project-card" key={i}>
+              <p className="status">{project.status}</p>
+              <h2>{project.title}</h2>
+              <p>{project.description}</p>
+              <ul className="project-tags">
+                {project.tags.map((tag) => (
+                  <li key={tag}>{tag}</li>
+                ))}
+              </ul>
+              <p className="project-note">{project.note}</p>
+              {project.blogTab && project.slug && (
+                <button
+                  className="button secondary project-notes-link"
+                  type="button"
+                  onClick={() => navigate(`/blog/${project.slug}`)}
+                >
+                  Follow the build notes
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section callout">
+        <p className="eyebrow">Open source</p>
+        <h2>More work on GitHub.</h2>
+        <p>
+          For publicly available code and ongoing experiments, visit{' '}
+          <a href="https://github.com/jabrennem" target="_blank" rel="noopener noreferrer">
+            github.com/jabrennem <span aria-hidden="true">↗</span>
+          </a>.
+        </p>
       </section>
 
       <section className="section credentials" aria-label="Education, certification, and languages">
