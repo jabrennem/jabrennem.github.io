@@ -1,9 +1,9 @@
 ---
 slug: serverless-etl
-status: "Series 01 \xB7 Serverless ETL"
+status: "Series 01 · Serverless ETL"
 title: From S3 events to S3 Table Buckets with Iceberg
 description: "The initial architecture: prefix-scoped S3 events, EventBridge routing, Step Functions orchestration, and EMR Serverless execution."
-keywords: "AWS SAM \xB7 S3 \xB7 EventBridge \xB7 Step Functions \xB7 EMR Serverless \xB7 Apache Iceberg \xB7 Lakehouse"
+keywords: "AWS SAM · S3 · EventBridge · Step Functions · EMR Serverless · Apache Iceberg · Lakehouse"
 search: serverless etl s3 eventbridge step functions emr serverless apache iceberg data lake lakehouse athena ingestion
 repoUrl: https://github.com/jabrennem/aws-sam-serverless-etl
 outline:
@@ -12,13 +12,13 @@ outline:
   - "Operating the pipeline: retries, data layout, and costs"
 ---
 
-import ArchitectureDiagram from '../../components/serverless-etl/ArchitectureDiagram';
-import ComputeDiagram from '../../components/serverless-etl/ComputeDiagram';
-import OrchestrationDiagram from '../../components/serverless-etl/OrchestrationDiagram';
-import StorageDiagram from '../../components/serverless-etl/StorageDiagram';
+import ArchitectureDiagram from './ArchitectureDiagram';
+import ComputeDiagram from './ComputeDiagram';
+import OrchestrationDiagram from './OrchestrationDiagram';
+import StorageDiagram from './StorageDiagram';
 import { Link } from 'react-router-dom';
 
-An in-depth walkthrough of a production-grade serverless ETL pipeline that ingests
+An in-depth walkthrough of a production ready serverless ETL pipeline that ingests
 Parquet files from S3 into managed Apache Iceberg tables using AWS SAM, Step Functions,
 Lambda, and EMR Serverless.
 
@@ -41,17 +41,19 @@ Lambda, and EMR Serverless.
 
 ### The problem
 
-A common problem for most teams who manage large datasets is: how do you reliably ingest files from S3 into 
-a queryable format? The solution needs to be timely, cost-effective, and observable. In an AWS environment, 
-we need a system that can respond to new data sets in S3, transform them into a structured format, and store them 
-in a way that allows for other services like Athena to query them. 
+In this new world of AI applications, data aggregation and the engineering skills to perform it are more critical than 
+ever. A common challenge for teams who manage large datasets on AWS is: how do you reliably ingest files from S3 into a 
+queryable data store? The solution needs to be timely, cost-effective, and observable. You need a system that responds
+the moment new datasets land in S3, transforms them into a structured format, and stores them in a way that allows for 
+other services like Athena to query them directly.
 
 <br/>
 
-In order for it to be timely, the solution needs to be event-driven, so that it can respond to new data as it is uploaded. In order for it to be cost-effective, 
-the solution needs to be serverless, so that it can scale up and down as needed without incurring unnecessary costs. 
-Finally, in order for it to be observable, the orchestration layer needs to provide visibility into the data ingestion 
-process and any errors that may occur so that they can be diagnosed and resolved quickly.
+In order for it to be timely, the solution needs to be event-driven, so that it can respond to new data as it is 
+uploaded. In order for it to be cost-effective, the solution needs to be serverless, so that it can scale up and down 
+as needed without incurring unnecessary costs. Finally, in order for it to be observable, the orchestration layer 
+needs to provide visibility into the data ingestion process and any errors that may occur so that they can be diagnosed 
+and resolved quickly.
 
 <div className="design-principles" aria-label="Architecture principles">
   <div>

@@ -3,7 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import About from './pages/About';
 import Music from './pages/Music';
-import Blog from './pages/Blog';
+import Blog from './pages/blog/Blog';
 import BlogPost from './pages/blog/BlogPost';
 
 function ScrollToHash() {
