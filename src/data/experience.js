@@ -25,10 +25,10 @@ const experience = [
     company: 'Nationwide Children\'s Hospital · Institute for Genomic Medicine, Cloud Solutions Team',
     bullets: [
       'Designed event-driven genomics workflows using Step Functions, Lambda, AWS Batch to process laboratory next generation sequencing pipelines.',
-      'Collaborated with bioinformatics scientists and academic researchers to translate research workflows into reliable, cost-effective production systems.',
-      'Worked on an in-house genomic variant data lake using S3 for storage, Glue for data catalog, Athena for analysis, and EMR Serverless for compute.',
-      'Developed a service to synchronize genomics variants, genes, and transcripts with the latest annotations.',
       'Contributed to the infrastructure of an in-house protocol Rapid Genome Sequencing for NICU patients.',
+      'Worked on an in-house genomic variant data lake using S3 for storage, Glue for data catalog, Athena for analysis, and EMR Serverless for compute.',
+      'Collaborated with bioinformatics scientists and academic researchers to translate research workflows into reliable, cost-effective production systems.',
+      'Developed a service to synchronize genomics variants, genes, and transcripts with the latest annotations.',
       'Built serverless websites used by directors and scientists using React, S3/CloudFront with API Gateway, Lambda, and DynamoDB to analyze genomic data and execute workflows.',
       'Used AWS SAM and CDK to deploy all applications',
     ],
