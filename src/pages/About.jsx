@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import experience from '../data/experience';
 import capabilities from '../data/capabilities';
 import projects from '../data/projects';
@@ -15,7 +15,9 @@ export default function About() {
           <h1>Joshua Brenneman</h1>
           <p className="hero-copy">A decade of building and pushing myself creatively.</p>
           <p className="supporting-copy">
-            I've spent my career helping researchers work in genomics, scientific computing, and machine learning. Now I'm bringing that depth to AI and creative technology. Outside of work, I write, produce, mix, and master music — another way I get to create something from scratch.
+            I've spent most of my career helping researchers solve complex problems in genomics, scientific computing,
+            and machine learning. I want to bring that same rigor and curiosity to AI and creative technology. Outside
+            of work, I produce music because it gives me another way to express myself and create something from scratch.
           </p>
           <div className="actions">
             <a className="button primary resume-download" href="/assets/Joshua-Brenneman-Resume.pdf" target="_blank" rel="noopener noreferrer">
@@ -38,18 +40,20 @@ export default function About() {
         <p className="eyebrow" id="about-heading">About</p>
         <p>
           I came to software through linguistics. Studying the formal, analytical side of language led me to computational
-          linguistics and natural language processing—and from there into programming. That path gave me a foundation I still
-          draw on: breaking complex systems into structured parts, finding patterns, and making the implicit explicit.
+          linguistics and natural language processing, and eventually into programming. That path gave me a foundation I still
+          draw on. I learned to break complex systems into tangible pieces, look for patterns, and derive meaning from what I find.
         </p>
         <p>
           Today I design AWS-native platforms that make difficult work easier for biomedical research, clinical genomics, data
-          processing, and machine learning. That means reusable infrastructure, distributed workflows, developer enablement,
-          and reliable cloud operations. My teaching background also shaped how I work—I like taking complex problems and
-          translating them into clear concepts that others can build on.
+          transformation, and machine learning. I enjoy working with people to make good architectural decisions and improve
+          the systems they use in production. I really enjoy the interdisciplinary work and collaborating with people from
+          different backgrounds. Working across a lot of different areas has also made me good at breaking down complex ideas
+          for others.
         </p>
         <p>
-          Music is another form of building for me. I write, produce, mix, and master records — and increasingly,
-          I'm interested in bringing engineering into that world through audio development and creative tools.
+          Music is another way I get to make things. I write, produce, mix, and master records, and I'm getting into
+          building audio tools and exploring other creative technologies. On the <Link to="/blog">blog</Link>, I write
+          about those projects and what I'm learning along the way.
         </p>
       </section>
 
@@ -126,7 +130,7 @@ export default function About() {
         <h2>More work on GitHub.</h2>
         <p>
           For publicly available code and ongoing experiments, visit{' '}
-          <a href="https://github.com/jabrennem" target="_blank" rel="noopener noreferrer">
+          <a className="callout-link" href="https://github.com/jabrennem" target="_blank" rel="noopener noreferrer">
             github.com/jabrennem <span aria-hidden="true">↗</span>
           </a>.
         </p>
