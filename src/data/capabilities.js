@@ -9,7 +9,7 @@ const capabilities = [
   },
   {
     title: 'Compute & containers',
-    description: 'AWS Lambda, Batch, ECS, Docker, Amazon ECR, and production orchestration patterns.',
+    description: 'AWS Lambda, AWS Batch, Docker, and production orchestration patterns.',
   },
   {
     title: 'Infrastructure & delivery',
@@ -17,7 +17,7 @@ const capabilities = [
   },
   {
     title: 'Software engineering',
-    description: 'Python, TypeScript, JavaScript, and modern C++ for application architecture and product development.',
+    description: 'Python, TypeScript, and JavaScript for application architecture and product development.',
   },
   {
     title: 'AI platforms',
