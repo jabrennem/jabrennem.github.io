@@ -3,7 +3,7 @@ const projects = [
     status: '',
     title: 'Serverless ETL',
     slug: 'serverless-etl',
-    description: 'An event-driven data-ingestion pipeline that turns files arriving under an S3 feed/ prefix into queryable Apache Iceberg data.',
+    description: 'An event-driven ETL pipeline that ingests files uploaded under an S3 feed/ prefix into queryable managed Apache Iceberg table using AWS S3 Table Buckets.',
     tags: ['AWS SAM', 'Amazon S3', 'EventBridge', 'Step Functions', 'EMR Serverless', 'Apache Iceberg'],
     note: 'The case study will cover the event flow, EMR Serverless job orchestration, table layout, operational safeguards, and how to deploy or remove the stack.',
     blogTab: true,
