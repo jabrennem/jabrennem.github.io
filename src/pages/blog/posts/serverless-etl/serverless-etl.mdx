@@ -148,15 +148,18 @@ just focus on the transformation.
 <br/>
 
 <p className="part-kicker"><span>The Source Code</span></p>
-<h2 id="infrastructure-as-code">Part 2: Infrastructure as code — the SAM template</h2>
+<h2 id="infrastructure-as-code">Part 2: Infrastructure as code using AWS SAM</h2>
 
-The entire stack is defined in a single `template.yaml` using the AWS SAM
-transform. This section walks through what gets deployed and why.
+The entire stack is defined in a single `template.yaml` using the AWS SAM transform. This section walks 
+through what goes into each layer of the architecture that we mapped out in part 1. The full 
+source code is available in the [GitHub repository](https://github.com/jabrennem/serverless-etl-s3-tables).
 
 <div className="architecture-layer-heading">
   <span>01</span>
   <h4>Security foundations</h4>
 </div>
+
+Before we dive into the code, here are some security best practices that this stack includes:
 
 - **KMS key with auto-rotation** — Customer-managed encryption for all data at rest; bucket-key enabled to reduce API costs.
 - **S3 Bucket policy** — Denies non-SSL traffic; scopes access to the AWS Organization via `aws:PrincipalOrgID`.
@@ -172,8 +175,9 @@ transform. This section walks through what gets deployed and why.
 
 ### KMS Key Encryption
 
-A customer-managed KMS key encrypts every object in the data bucket. Auto-rotation is
-enabled and the bucket uses S3 Bucket Key to reduce per-request KMS calls.
+A customer-managed KMS key encrypts every object in the data bucket. This is very important when incoming data is
+sensitive like PII or health information. Auto-rotation is enabled and the bucket uses S3 Bucket Key to reduce 
+per-request KMS calls.
 
 ```yaml
 EncryptionKey:
@@ -185,9 +189,14 @@ EncryptionKey:
 
 ### DataBucket
 
-The data bucket is the landing zone for source files and run artifacts. EventBridge
-notifications are enabled so downstream rules can react to `feed/` uploads. Versioning,
-public access blocks, logging, and lifecycle rules are all configured inline.
+In this design, we are using the 'DataBucket' for a few different purposes:
+  - `feed/` the source data feed
+  - `emr/` the runtime artifacts like the PySpark script
+  - `runs/` the output for runtime statistics
+
+The EventBridge notifications are enabled so our event rule defined later on can react to `feed/` uploads.
+We also apply very common production practices, such as enabling versioning, public access blocks, access logging, 
+and lifecycle rules. 
 
 ```yaml
 DataBucket:
@@ -220,7 +229,8 @@ DataBucket:
             NoncurrentDays: 30
 ```
 
-The bucket policy denies insecure transport and scopes access to the organization:
+To further control access to the bucket, we apply a bucket policy that rejects any request 
+that does not use HTTPS and blocks access outside of the organization.
 
 ```yaml
 BucketPolicy:
@@ -260,10 +270,12 @@ BucketPolicy:
 
 ### S3 Tables Resources
 
-Three CloudFormation resources define the S3 Table Bucket destination. We define the 
+Three CloudFormation resources define the S3 Table Bucket destination. S3 Table Buckets use
+a 3 layer hierarchy for accessing the Iceberg tables.
+
   - Table Bucket
-  - The Namespace which is similar to a Glue Database
-  - The table which matches Glue Table
+  - The Namespace
+  - The Table
 
 I chose to declare the table in the template to make this service simple. It also means it exists before 
 the first pipeline run, so there is no "create table if notexists" logic in Spark.
@@ -517,13 +529,27 @@ scoped to the state machine ARN.
 </div>
 
 Build and deploy are standard SAM. A `post-deploy.sh` script handles uploading the
-PySpark entrypoint to S3 and applying Lake Formation grants that CloudFormation can't
-express natively.
+PySpark entrypoint to S3 and applies the account-specific Lake Formation grants the
+EMR job needs.
 
 ```bash
 sam build && sam deploy
 ./scripts/post-deploy.sh
 ```
+
+`sam build` packages the Lambda function and produces the transformed template used
+for deployment.
+
+<figure>
+  <img src="/assets/media/serverless-etl/sam_build.png" alt="Terminal output showing a successful SAM build for the ValidateInputFunction Lambda." style={{width: '100%'}} />
+</figure>
+
+After `sam deploy` completes, CloudFormation returns the stack outputs, including
+the name of the data bucket used by the pipeline.
+
+<figure>
+  <img src="/assets/media/serverless-etl/sam_deploy.png" alt="Terminal output showing a successful SAM deployment and the deployed stack's DataBucketName output." style={{width: '100%'}} />
+</figure>
 
 The post-deploy script is idempotent — safe to re-run on every deploy:
 
@@ -538,7 +564,26 @@ aws lakeformation grant-permissions \
   --permissions '["CREATE_DATABASE", "DESCRIBE"]'
 ```
 
-{/* TODO: screenshot of successful deploy in terminal */}
+### Why the Lake Formation grants matter
+
+Lake Formation was enabled in the account used for this deployment. When it governs a
+data catalog, IAM permissions alone are not enough for an EMR job to work with the
+catalog's data. Lake Formation is an additional authorization layer, so the EMR role
+must be explicitly granted access to the S3 Tables catalog, its `default` namespace,
+and the tables inside it.
+
+The script applies the least privileges the job needs at each level:
+
+- **Catalog** — `CREATE_DATABASE` and `DESCRIBE`, so the job can discover the catalog
+  and create a database if needed.
+- **Namespace** — `DESCRIBE`, `ALTER`, and `CREATE_TABLE`, so it can inspect and manage
+  the `default` namespace.
+- **Tables** — `SELECT`, `INSERT`, `DESCRIBE`, `ALTER`, and `DROP`, so it can read,
+  write, and maintain the Iceberg tables created by the pipeline.
+
+These grants are applied after deployment because the script derives both the deployed
+EMR role and the account-specific S3 Tables catalog ID. Re-running it is safe: grants
+that already exist are ignored.
 
 <div className="architecture-layer-heading">
   <span>02</span>
@@ -616,6 +661,22 @@ image below is what a successful execution looks like.
 
 <figure>
   <img src="/assets/media/serverless-etl/state-machine-succeeded.png" alt="Step Functions Graph view showing a succeeded execution — Validate Input, Load Tables map with Load Data, Get Stats Object, Emit Job Complete, Item Succeeded, then Check Table Results routing to Succeed." style={{maxWidth: '480px', width: '100%'}} />
+</figure>
+
+### Verify the loaded data
+
+Open the `test_data` table in the S3 Tables console and select **Preview** to inspect
+the rows written by the pipeline.
+
+<figure>
+  <img src="/assets/media/serverless-etl/table_bucket_preview_button.png" alt="S3 Tables console for the test_data table with the Preview button highlighted." style={{width: '100%'}} />
+</figure>
+
+The preview confirms that all three records from the test file landed in the Iceberg
+table.
+
+<figure>
+  <img src="/assets/media/serverless-etl/table_bucket_preview_data.png" alt="S3 Tables preview showing three test_data rows: Alice with 100.5, Bob with 200.75, and Charlie with 350." style={{width: '100%'}} />
 </figure>
 
 <div className="architecture-layer-heading">

@@ -12,7 +12,7 @@ const experience = [
       'Enabled data analysts to query lakehouse data with Amazon SageMaker Unified Studio.',
       'Help lead organization of team steering documents, skills, and best practices for development with AI coding agents such as Claude and Kiro',
       'Migrate Data Lake House to a NIST compliant environment',
-      'Worked with solutions architect to build a multi-account ecosystem using AWS Organizations with 10+ accounts encompassing 10+ petabytes',
+      'Worked with solutions architect to build a multi-account ecosystem using AWS Organizations with 10+ accounts encompassing petabytes of data.',
       'Migrated and architected deployment of existing production microservices to new multi-account system.',
       'Built CI/CD pipelines with AWS CodePipeline and CodeBuild, and more recently GitHub Actions, for production AWS applications.',
       'Worked with scientists in IGM genomics teams to use AWS SAM and other AWS architecture fundamentals',
