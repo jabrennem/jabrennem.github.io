@@ -158,7 +158,7 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .blog-article dl.design-decisions dd { color: var(--muted); margin: 0.3rem 0 0 0; max-width: 700px; }
 .blog-article pre { overflow-x: auto; padding: 1.25rem; margin: 1rem 0; border-radius: 6px; }
 .blog-article pre > code { display: block; }
-.blog-article code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.85rem; }
+.blog-article code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.85rem; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .blog-article p code { background: var(--surface-soft); padding: 0.15em 0.35em; border-radius: 3px; }
 .blog-article [data-rehype-pretty-code-figure] { margin: 1rem 0; }
 .blog-article [data-rehype-pretty-code-figure] pre { border: 1px solid var(--border); margin: 0; }
@@ -201,7 +201,8 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
   .artist-copy { padding: 1.5rem; }
   .artist-logo { align-self: center; height: auto; margin-bottom: 1rem; width: 84%; }
   .artist-photo { min-height: 210px; }
-  .design-principles { grid-template-columns: 1fr; }
+  .design-principles { display: flex; margin-right: -1.25rem; overflow-x: auto; padding: 0 1.25rem 0.75rem 0; scroll-snap-type: x proximity; }
+  .design-principles > div { flex: 0 0 min(80vw, 300px); scroll-snap-align: start; }
   .audio-gallery { gap: 0.65rem; margin-top: 1rem; }
   .audio-gallery img { height: 160px; }
   .audio-gallery figcaption { display: none; }
