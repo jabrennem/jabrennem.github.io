@@ -167,7 +167,8 @@ Before we dive into the code, here are some security best practices that this st
 - **Versioning + lifecycle** — 30-day non-current version expiry balances recovery with storage costs.
 - **Access logging** — Logs to a separate bucket with a stack-specific prefix.
 - **IAM: least-privilege per service** — Separate roles per actor, ARNs scoped as tightly as possible.
-- **LakeFormation enabled** — Row/column-level access control on Glue Catalog resources.
+- **Optional Lake Formation integration** — Accounts that enforce Lake Formation
+  permissions need additional grants for the EMR role.
 
 <div className="architecture-layer-heading">
   <span>02</span>
@@ -318,6 +319,102 @@ IcebergTestDataTable:
 
 <div className="architecture-layer-heading">
   <span>03</span>
+  <h4>Orchestration</h4>
+</div>
+
+### State Machine
+
+The state machine uses JSONata (not JSONPath) for data transformations and the
+`.sync` integration pattern so Step Functions polls EMR until completion — no custom
+polling loop needed.
+
+#### ASL highlights
+
+The Map state iterates over resolved table mappings, so each input file gets an
+independent EMR → stats → emit pipeline. Its input is simply:
+
+```json
+"Items": "{% $states.input.SourceFileTableNameMapping %}"
+```
+
+Each item submits `load_data.py` synchronously, passing the source object, catalog ID,
+namespace, target table, and an execution-scoped stats location. Failed items route to
+`Fail Item`, so one table's failure does not prevent the remaining items from running.
+
+The submit configuration is kept separate from the Map logic. In the deployed ASL it
+is one `SparkSubmitParameters` string; expanded here, each setting is easier to scan:
+
+```bash
+--conf spark.jars=/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar
+--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+--conf spark.sql.catalog.s3tablesbucket=org.apache.iceberg.spark.SparkCatalog
+--conf spark.sql.catalog.s3tablesbucket.type=rest
+--conf spark.sql.catalog.s3tablesbucket.uri=https://glue.${AWS::Region}.amazonaws.com/iceberg
+--conf spark.sql.catalog.s3tablesbucket.warehouse=${GlueCatalogId}
+--conf spark.sql.catalog.s3tablesbucket.rest.sigv4-enabled=true
+--conf spark.sql.catalog.s3tablesbucket.rest.signing-name=glue
+--conf spark.sql.catalog.s3tablesbucket.rest.signing-region=${AWS::Region}
+```
+
+Together, these configure Spark's `s3tablesbucket` catalog to use the AWS Glue Iceberg
+REST endpoint, sign requests with SigV4, and enable Iceberg's Spark extensions.
+
+After the Map completes, a Choice state counts failed items — if any table has
+`status: "failed"`, the execution fails. This makes partial success visible in the
+Step Functions console.
+
+```json
+"Check Table Results": {
+  "Type": "Choice",
+  "Choices": [{
+    "Condition": "{% $count($states.input[status = 'failed']) > 0 %}",
+    "Next": "Fail"
+  }],
+  "Default": "Succeed"
+}
+```
+
+### Event Rule and Input Transformer
+
+An EventBridge rule filters for `Object Created` events under the `feed/` prefix
+and invokes the state machine via an `InputTransformer` that extracts the S3 key
+into the expected payload shape.
+
+```yaml
+FeedUploadRule:
+  Type: AWS::Events::Rule
+  Properties:
+    EventPattern:
+      source:
+        - aws.s3
+      detail-type:
+        - Object Created
+      detail:
+        bucket:
+          name:
+            - !Ref DataBucket
+        object:
+          key:
+            - prefix: "feed/"
+    Targets:
+      - Id: LoadDataStateMachine
+        Arn: !GetAtt StateMachine.Arn
+        RoleArn: !GetAtt EventBridgeStateMachineRole.Arn
+        InputTransformer:
+          InputPathsMap:
+            key: $.detail.object.key
+          InputTemplate: |
+            {
+              "SourceFileTableNameMapping": [{"SourceFile": "<key>"}],
+              "Event": {"source": "aws.s3", "detail-type": "Object Created", "key": "<key>"}
+            }
+```
+
+The `EventBridgeStateMachineRole` has a single permission — `states:StartExecution`
+scoped to the state machine ARN.
+
+<div className="architecture-layer-heading">
+  <span>04</span>
   <h4>Compute</h4>
 </div>
 
@@ -415,109 +512,6 @@ Table resolution matches the S3 key against regex patterns sorted by specificity
 }
 ```
 
-<div className="architecture-layer-heading">
-  <span>04</span>
-  <h4>Orchestration</h4>
-</div>
-
-### State Machine
-
-The state machine uses JSONata (not JSONPath) for data transformations and the
-`.sync` integration pattern so Step Functions polls EMR until completion — no custom
-polling loop needed.
-
-#### ASL highlights
-
-The Map state iterates over resolved table mappings. Each iteration runs the full
-EMR → stats → emit pipeline independently. Per-item `Catch` blocks route failures
-to a "Fail Item" pass state so one table's failure doesn't abort others.
-
-```json
-"Load Tables": {
-  "Type": "Map",
-  "Items": "{% $states.input.SourceFileTableNameMapping %}",
-  "ItemProcessor": {
-    "ProcessorConfig": { "Mode": "INLINE" },
-    "StartAt": "Load Data",
-    "States": {
-      "Load Data": {
-        "Type": "Task",
-        "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
-        "Retry": [{
-          "ErrorEquals": [
-            "EmrServerless.EmrServerlessException",
-            "EMRServerless.AWSEMRServerlessException",
-            "EMRServerless.ValidationException"
-          ],
-          "IntervalSeconds": 15,
-          "MaxAttempts": 10,
-          "BackoffRate": 2
-        }],
-        "Catch": [{
-          "ErrorEquals": ["States.ALL"],
-          "Next": "Fail Item"
-        }],
-        "Next": "Get Stats Object"
-      }
-    }
-  }
-}
-```
-
-After the Map completes, a Choice state counts failed items — if any table has
-`status: "failed"`, the execution fails. This makes partial success visible in the
-Step Functions console.
-
-```json
-"Check Table Results": {
-  "Type": "Choice",
-  "Choices": [{
-    "Condition": "{% $count($states.input[status = 'failed']) > 0 %}",
-    "Next": "Fail"
-  }],
-  "Default": "Succeed"
-}
-```
-
-### Event Rule and Input Transformer
-
-An EventBridge rule filters for `Object Created` events under the `feed/` prefix
-and invokes the state machine via an `InputTransformer` that extracts the S3 key
-into the expected payload shape.
-
-```yaml
-FeedUploadRule:
-  Type: AWS::Events::Rule
-  Properties:
-    EventPattern:
-      source:
-        - aws.s3
-      detail-type:
-        - Object Created
-      detail:
-        bucket:
-          name:
-            - !Ref DataBucket
-        object:
-          key:
-            - prefix: "feed/"
-    Targets:
-      - Id: LoadDataStateMachine
-        Arn: !GetAtt StateMachine.Arn
-        RoleArn: !GetAtt EventBridgeStateMachineRole.Arn
-        InputTransformer:
-          InputPathsMap:
-            key: $.detail.object.key
-          InputTemplate: |
-            {
-              "SourceFileTableNameMapping": [{"SourceFile": "<key>"}],
-              "Event": {"source": "aws.s3", "detail-type": "Object Created", "key": "<key>"}
-            }
-```
-
-The `EventBridgeStateMachineRole` has a single permission — `states:StartExecution`
-scoped to the state machine ARN.
-
 ---
 
 <br/>
@@ -530,8 +524,8 @@ scoped to the state machine ARN.
 </div>
 
 Build and deploy are standard SAM. A `post-deploy.sh` script handles uploading the
-PySpark entrypoint to S3 and applies the account-specific Lake Formation grants the
-EMR job needs.
+PySpark entrypoint to S3 and applies Lake Formation grants for accounts that use
+Lake Formation to govern Data Catalog access.
 
 ```bash
 sam build && sam deploy
@@ -558,7 +552,8 @@ The post-deploy script is idempotent — safe to re-run on every deploy:
 # Upload PySpark entrypoint
 aws s3 cp emr/load_data.py "s3://${DATA_BUCKET}/emr/load_data.py"
 
-# Apply Lake Formation grants (catalog → database → table)
+# Required only when Lake Formation permissions govern the catalog:
+# apply grants (catalog → database → table)
 aws lakeformation grant-permissions \
   --principal "DataLakePrincipalIdentifier=${EMR_ROLE_ARN}" \
   --resource '{"Catalog":{"Id":"<catalog-id>"}}' \
@@ -567,11 +562,15 @@ aws lakeformation grant-permissions \
 
 ### Why the Lake Formation grants matter
 
-Lake Formation was enabled in the account used for this deployment. When it governs a
-data catalog, IAM permissions alone are not enough for an EMR job to work with the
-catalog's data. Lake Formation is an additional authorization layer, so the EMR role
-must be explicitly granted access to the S3 Tables catalog, its `default` namespace,
-and the tables inside it.
+Lake Formation is optional here. By default, Lake Formation uses **Use only IAM access
+control** for new Data Catalog resources, so IAM policies control access. In the account
+used for this deployment, Lake Formation permissions governed the catalog instead. In
+that mode, IAM permissions alone are not enough for an EMR job to work with the catalog:
+the EMR role must also be explicitly granted access to the S3 Tables catalog, its
+`default` namespace, and the tables inside it.
+
+If your account retains the IAM-only default, the PySpark upload is the only
+post-deployment step needed; omit the Lake Formation grant commands.
 
 The script applies the least privileges the job needs at each level:
 
@@ -755,14 +754,21 @@ teams.
 
 ### Production considerations
 
-- **INSERT OVERWRITE, not MERGE** — The current job does a full overwrite. For append-only feeds this is fine; for update-heavy data you'd want an upsert/merge strategy with a deduplication key.
-- **Single-file-per-event granularity** — Each file triggers a full execution. For high-frequency small files, a micro-batching strategy (SQS buffer + scheduled trigger) would reduce per-file overhead.
-- **No dead-letter queue** — Failed events currently surface only in Step Functions execution history. A DLQ on the EventBridge target would make unprocessable events more discoverable.
-- **S3 Bucket Deletion Policy** — Set the DeletionPolicy of the S3 buckets to Retain in production so data is not lost when the stack is deleted.
-- **Extending to multiple tables** — Adding a new ingestion target requires only a regex pattern in `file_mapping.json` and an `AWS::S3Tables::Table` resource in the SAM template. No changes to the state machine, Lambda code, or PySpark script — the architecture is table-count-agnostic by design.
+- **Overwrite vs. MERGE** — The current job does a full overwrite. For append-only feeds this is fine; for update-heavy data you'd want an upsert/merge strategy with a deduplication key.
+- **Batch S3 events using an SQS queue** — Each file triggers a full execution. For high-frequency small files, a micro-batching strategy would reduce per-file overhead.
+- **DLQ for operational safety** — Failed events currently surface only in Step Functions execution history, and stack deletion can remove bucket data. In production, add a DLQ to the EventBridge target and set bucket `DeletionPolicy` to `Retain`.
 
 ### Future additions
 
 - Schema evolution handling — detect new columns in Parquet and evolve the Iceberg schema
 - Data quality checks (Great Expectations or Deequ) as a pre-write gate
 - Multi-account deployment via AWS Organizations + StackSets
+
+### Summary
+
+For data engineering teams, this is a practical way to turn an uploaded Parquet file
+into a queryable Iceberg table without keeping infrastructure running between workloads.
+New data is picked up as soon as it lands, each ingestion has a visible execution
+history, and Spark compute spins up only when there is work to do. The result is a
+pipeline that is timely, cost-effective, and observable, with clear places to extend it
+as data volume, table count, and operational requirements grow.
