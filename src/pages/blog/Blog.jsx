@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import posts from './posts';
+import PostCard from '../../components/PostCard';
 
 const POSTS_PER_PAGE = 10;
 
@@ -54,19 +54,7 @@ export default function Blog() {
 
         <div className="writing-series">
           {visible.map((post) => (
-            <Link className="post-card" to={`/blog/${post.slug}`} key={post.slug}>
-              <p className="status">{post.status}</p>
-              <h2>{post.title}</h2>
-              <p>{post.description}</p>
-              {post.Thumbnail && (
-                <div className="post-card-thumbnail">
-                  <post.Thumbnail />
-                </div>
-              )}
-              <p className="post-keywords">
-                <span>Keywords</span> {post.keywords}
-              </p>
-            </Link>
+            <PostCard post={post} key={post.slug} />
           ))}
         </div>
 

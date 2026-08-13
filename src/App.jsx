@@ -12,7 +12,7 @@ function ScrollToHash() {
   useEffect(() => {
     if (hash) {
       const id = decodeURIComponent(hash.slice(1));
-      requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }));
+      requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     } else {
       window.scrollTo(0, 0);
     }
