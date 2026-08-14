@@ -44,19 +44,18 @@ Lambda, and EMR Serverless.
 
 ### The problem
 
-In this new world of AI applications, data aggregation and the engineering skills to perform it are more critical than 
-ever. A common challenge for teams who manage large datasets on AWS is: how do you reliably ingest files from S3 into a 
-queryable data store? The solution needs to be timely, cost-effective, and observable. You need a system that responds
+In this new world of AI applications, data engineering skills are more critical than ever. A common challenge for teams 
+who manage large datasets on AWS is: how do you reliably ingest files from S3 into a queryable data store? The solution 
+needs to be timely, cost-effective, and observable. You need a system that responds
 the moment new datasets land in S3, transforms them into a structured format, and stores them in a way that allows for 
 other services like Athena to query them directly.
 
 <br/>
 
 In order for it to be timely, the solution needs to be event-driven, so that it can respond to new data as it is 
-uploaded. In order for it to be cost-effective, the solution needs to be serverless, so that it can scale up and down 
-as needed without incurring unnecessary costs. Finally, in order for it to be observable, the orchestration layer 
-needs to provide visibility into the data ingestion process and any errors that may occur so that they can be diagnosed 
-and resolved quickly.
+uploaded. In order for it to be cost-effective, the solution needs to scale up and down as needed without incurring 
+unnecessary costs. Finally, in order for it to be observable, the orchestration layer needs to provide visibility into 
+the data ingestion process and any errors that may occur so they can be diagnosed and resolved quickly.
 
 <div className="design-principles" aria-label="Architecture principles">
   <div>
@@ -88,9 +87,9 @@ There are 3 layers to this solution architecture:
   <h4>Storage</h4>
 </div>
 
-For storage, we have to consider locations for both the incoming source data feed and the transformed data. The transformed data
+For storage, we have to consider locations for both the incoming source data feed and the transformed output data. The transformed data
 will be referenced by downstream services and analytics teams. For this reason, we will use a common and highly optimized data store, 
-Apache Iceberg tables. In this architecture, the source data is stored in a general S3 bucket, while the transformed data is stored 
+Apache Iceberg. In this architecture, the source data is stored in a general S3 bucket, while the transformed data is stored 
 in AWS managed Iceberg tables using S3 Table Buckets. This allows for a clear separation of concerns between the raw data and the 
 transformed data.
 
@@ -105,7 +104,7 @@ We want to give the incoming data feed a clear location in the S3 bucket, so we 
 </div>
 
 The orchestration layer is responsible for coordinating the ingestion process. The first step is to detect when new `feed/` objects
-are created. Luckily, the S3 bucket can be configured to send events to EventBridge. Using an EventBridge rule, we can filter for 
+are created. Conveniently, the S3 bucket can be configured to send events to EventBridge. Using an EventBridge rule, we can filter for 
 the `feed/` prefix and trigger whichever downstream process we want.
 
 In an AWS environment, I'm a huge fan of the Step Functions service for running multi-step workflows. It provides a visual representation
@@ -121,8 +120,7 @@ and observability. The Step Functions state machine will be triggered by the Eve
 
 Now that we have a way to detect new data and orchestrate the ingestion process, we need a compute layer to actually perform the 
 transformation. I have found that EMR Serverless and Spark is a great option for this. EMR Serverless gives us direct control over the
-Spark session configuration. This is important because we need to configure an Iceberg REST catalog that connects to our S3 Table Bucket
-through the AWS Glue Iceberg REST endpoint. The S3 Tables integration exposes the bucket through Glue's federated `s3tablescatalog`,
+Spark session configuration. The S3 Tables integration exposes the bucket through Glue's federated `s3tablescatalog`,
 allowing Spark to read from and write to the Iceberg tables.
 
 Outside of transforming the data, there is an opportunity to capture runtime statistics. This 
@@ -193,7 +191,7 @@ EncryptionKey:
 
 In this design, we are using the 'DataBucket' for a few different purposes:
   - `feed/` the source data feed
-  - `emr/` the runtime artifacts like the PySpark script
+  - `emr/` the runtime PySpark script
   - `runs/` the output for runtime statistics
 
 The EventBridge notifications are enabled so our event rule defined later on can react to `feed/` uploads.
@@ -324,13 +322,13 @@ IcebergTestDataTable:
 
 ### State Machine
 
-The state machine uses JSONata (not JSONPath) for data transformations and the
-`.sync` integration pattern so Step Functions polls EMR until completion — no custom
-polling loop needed.
+The state machine language comes with a few helpful tools that reduces our need for futher lambdas. We use 
+JSONata (not JSONPath) which allows for more complex data transformations in our state definitions and the
+`.sync` integration pattern so Step Functions polls EMR until completion.
 
 #### ASL highlights
 
-The Map state iterates over resolved table mappings, so each input file gets an
+There is a Map state which iterates over resolved table mappings, so each input file gets an
 independent EMR → stats → emit pipeline. Its input is simply:
 
 ```json
@@ -341,8 +339,7 @@ Each item submits `load_data.py` synchronously, passing the source object, catal
 namespace, target table, and an execution-scoped stats location. Failed items route to
 `Fail Item`, so one table's failure does not prevent the remaining items from running.
 
-The submit configuration is kept separate from the Map logic. In the deployed ASL it
-is one `SparkSubmitParameters` string; expanded here, each setting is easier to scan:
+The submit configuration is kept separate from the Map logic defined as the `SparkSubmitParameters` string.
 
 ```bash
 --conf spark.jars=/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar
@@ -378,7 +375,7 @@ Step Functions console.
 
 An EventBridge rule filters for `Object Created` events under the `feed/` prefix
 and invokes the state machine via an `InputTransformer` that extracts the S3 key
-into the expected payload shape.
+into the expected shape that will be sent to the `ValidateInputFunction`.
 
 ```yaml
 FeedUploadRule:
@@ -417,6 +414,51 @@ scoped to the state machine ARN.
   <span>04</span>
   <h4>Compute</h4>
 </div>
+
+### Validate Input Lambda
+
+A sub-second Lambda that fails the execution fast and cheap before running EMR.
+It validates the EventBridge payload against a JSON Schema and resolves which Iceberg
+table to target using regex patterns from `file_mapping.json`.
+
+```yaml
+ValidateInputFunction:
+  Type: AWS::Serverless::Function
+  Properties:
+    Handler: validate_input.handler
+    CodeUri: lambda/validate_input/
+```
+
+#### Handler highlights
+
+This is the main handler behind the Lambda.
+
+```python
+@logger.inject_lambda_context
+def handler(event, context):
+    validate(event=event, schema=INPUT_SCHEMA)
+
+    for mapping in event["SourceFileTableNameMapping"]:
+        if "TableName" not in mapping:
+            table_name = resolve_table_name(
+                mapping["SourceFile"], FILE_PATTERN_MAPPINGS
+            )
+            mapping["TableName"] = table_name
+
+    return event
+```
+
+Table resolution matches the S3 key against regex patterns sorted by specificity
+(longest first). Adding a new ingestion target requires only a new entry in
+`file_mapping.json` and a corresponding table resource in the SAM template.
+
+```json
+{
+  "mappings": [
+    {"tableName": "test_data", "filePattern": ".*/test-data\\.parquet$"}
+  ]
+}
+```
 
 ### EMR Serverless App
 
@@ -468,49 +510,6 @@ def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
 
 The stats file written to `runs/<execution-id>/stats/<table>.json` is read back by
 the state machine so structured metadata flows downstream without parsing Spark logs.
-
-### Validate Input Lambda
-
-A sub-second Lambda that fails the execution fast and cheap before EMR provisioning.
-It validates the EventBridge payload against a JSON Schema and resolves which Iceberg
-table to target using regex patterns from `file_mapping.json`.
-
-```yaml
-ValidateInputFunction:
-  Type: AWS::Serverless::Function
-  Properties:
-    Handler: validate_input.handler
-    CodeUri: lambda/validate_input/
-```
-
-#### Handler highlights
-
-```python
-@logger.inject_lambda_context
-def handler(event, context):
-    validate(event=event, schema=INPUT_SCHEMA)
-
-    for mapping in event["SourceFileTableNameMapping"]:
-        if "TableName" not in mapping:
-            table_name = resolve_table_name(
-                mapping["SourceFile"], FILE_PATTERN_MAPPINGS
-            )
-            mapping["TableName"] = table_name
-
-    return event
-```
-
-Table resolution matches the S3 key against regex patterns sorted by specificity
-(longest first). Adding a new ingestion target requires only a new entry in
-`file_mapping.json` and a corresponding table resource in the SAM template.
-
-```json
-{
-  "mappings": [
-    {"tableName": "test_data", "filePattern": ".*/test-data\\.parquet$"}
-  ]
-}
-```
 
 ---
 
@@ -709,8 +708,8 @@ total duration:
     </tr>
     <tr>
       <td><strong>EMR Serverless</strong> (ARM64)</td>
-      <td>~2 min 36 s, 4 vCPU / 16 GB</td>
-      <td>~$0.013</td>
+      <td>~2 min 36 s total (includes queuing), 4 vCPU / 16 GB</td>
+      <td>≤ $0.013</td>
     </tr>
     <tr>
       <td><strong>S3</strong></td>
@@ -725,20 +724,23 @@ total duration:
     <tr>
       <td><strong>Total</strong></td>
       <td></td>
-      <td><strong>~$0.013</strong></td>
+      <td><strong>≤ $0.013</strong></td>
     </tr>
   </tbody>
 </table>
 
 The cost is dominated almost entirely by EMR Serverless compute time. Everything else
-rounds to effectively zero. The 2-minute auto-stop idle timeout means the EMR application
-shuts down immediately after the job completes, so there's no ongoing cost between runs.
+rounds to effectively zero. Note that the ~2 min 36 s figure is the total
+time observed from Step Functions, which includes job queuing and startup — EMR Serverless
+only bills for actual vCPU and memory seconds while the job is running, so the real cost
+is likely lower. The 2-minute auto-stop idle timeout means the EMR application shuts down
+immediately after the job completes, so there's no ongoing cost between runs.
 
 For context, Step Functions provides 4,000 free state transitions per month and Lambda
 includes 1M requests + 400,000 GB-seconds free — so for light development and testing,
 those services are literally $0.
 
-### Cost attribution
+### Resource Tags
 
 The stack is tagged with an application identifier, which means all resources created by
 CloudFormation inherit the tag. This integrates with AWS Cost Explorer, AWS Budgets, and
