@@ -522,12 +522,14 @@ the state machine so structured metadata flows downstream without parsing Spark 
   <h4>Commands</h4>
 </div>
 
-Build and deploy are standard SAM. A `post-deploy.sh` script handles uploading the
-PySpark entrypoint to S3 and applies Lake Formation grants for accounts that use
-Lake Formation to govern Data Catalog access.
+The deployment process follows a typical SAM lifecycle. Specify a profile_name and run sam build/deploy. A 
+`post-deploy.sh` script handles uploading the PySpark entrypoint to S3 and applies Lake Formation grants 
+for accounts that use Lake Formation to govern Data Catalog access.
 
 ```bash
-sam build && sam deploy
+AWS_PROFILE=profile_name
+sam build
+sam deploy
 ./scripts/post-deploy.sh
 ```
 
