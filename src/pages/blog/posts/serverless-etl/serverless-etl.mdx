@@ -502,7 +502,7 @@ def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
     spark.sql(f"INSERT OVERWRITE {iceberg_table} SELECT * FROM source_data")
 
     if stats_s3_uri:
-        _write_stats_file(stats_s3_uri, input_path, catalog_id,
+        _write_stats_file(spark, stats_s3_uri, input_path, catalog_id,
                           namespace, table_name, count)
     spark.stop()
     return 0
@@ -522,12 +522,21 @@ the state machine so structured metadata flows downstream without parsing Spark 
   <h4>Commands</h4>
 </div>
 
-The deployment process follows a typical SAM lifecycle. Specify a profile_name and run sam build/deploy. A 
+The deployment process follows a typical SAM lifecycle. Before deploying, open `samconfig.yaml` and fill in
+the `parameter_overrides` values for your environment:
+
+```yaml
+parameter_overrides:
+  - PrincipalOrgId=o-xxxxxxxxxx      # your AWS Organization ID
+  - LoggingBucketName=my-logging-bucket  # existing S3 bucket for access logs
+```
+
+Once those are set, specify a profile and run sam build/deploy. A 
 `post-deploy.sh` script handles uploading the PySpark entrypoint to S3 and applies Lake Formation grants 
 for accounts that use Lake Formation to govern Data Catalog access.
 
 ```bash
-AWS_PROFILE=profile_name
+export AWS_PROFILE=profile_name
 sam build
 sam deploy
 ./scripts/post-deploy.sh
@@ -560,6 +569,10 @@ aws lakeformation grant-permissions \
   --resource '{"Catalog":{"Id":"<catalog-id>"}}' \
   --permissions '["CREATE_DATABASE", "DESCRIBE"]'
 ```
+
+<figure>
+  <img src="/assets/media/serverless-etl/post_deploy.png" alt="Terminal output showing a successful post-deploy script run — uploading the PySpark script and applying Lake Formation grants." style={{width: '100%'}} />
+</figure>
 
 ### Why the Lake Formation grants matter
 
@@ -634,6 +647,10 @@ the EventBridge rule and starts the state machine.
 # → Pipeline triggered. Monitor execution in the Step Functions console.
 ```
 
+<figure>
+  <img src="/assets/media/serverless-etl/trigger_sh.png" alt="Terminal output showing trigger.sh uploading a parquet file to the feed/ prefix and confirming the pipeline was triggered." style={{width: '100%'}} />
+</figure>
+
 Below you can see the uploaded parquet file in S3 under the `feed/` prefix.
 
 <figure>
@@ -686,8 +703,8 @@ table.
 </div>
 
 The pipeline costs effectively nothing at rest. Here's the actual cost of one test
-execution processing a 1.3 KB Parquet file through 8 state transitions in ~2 min 37 s
-total duration:
+execution processing a 1.3 KB Parquet file through 8 state transitions in 2 min 31 s
+total state machine duration:
 
 <table>
   <thead>
@@ -705,13 +722,13 @@ total duration:
     </tr>
     <tr>
       <td><strong>Lambda</strong> (ARM64, 128 MB)</td>
-      <td>554 ms duration, 1 invocation</td>
+      <td>80 ms duration, 1 invocation</td>
       <td>$0.000001</td>
     </tr>
     <tr>
       <td><strong>EMR Serverless</strong> (ARM64)</td>
-      <td>~2 min 36 s total (includes queuing), 4 vCPU / 16 GB</td>
-      <td>≤ $0.013</td>
+      <td>~2 min 24 s total, 0.267 vCPU-hours / 1.067 GB-hours billed</td>
+      <td>$0.016</td>
     </tr>
     <tr>
       <td><strong>S3</strong></td>
@@ -726,17 +743,15 @@ total duration:
     <tr>
       <td><strong>Total</strong></td>
       <td></td>
-      <td><strong>≤ $0.013</strong></td>
+      <td><strong>≤ $0.016</strong></td>
     </tr>
   </tbody>
 </table>
 
 The cost is dominated almost entirely by EMR Serverless compute time. Everything else
-rounds to effectively zero. Note that the ~2 min 36 s figure is the total
-time observed from Step Functions, which includes job queuing and startup — EMR Serverless
-only bills for actual vCPU and memory seconds while the job is running, so the real cost
-is likely lower. The 2-minute auto-stop idle timeout means the EMR application shuts down
-immediately after the job completes, so there's no ongoing cost between runs.
+rounds to effectively zero. The 2-minute auto-stop idle timeout means the EMR
+application shuts down immediately after the job completes, so there's no ongoing cost
+between runs.
 
 For context, Step Functions provides 4,000 free state transitions per month and Lambda
 includes 1M requests + 400,000 GB-seconds free — so for light development and testing,
@@ -754,19 +769,23 @@ teams.
 
 <br/>
 
-<h2 id="tradeoffs-and-next-steps">Part 4: Production considerations and future additions</h2>
+<h2 id="tradeoffs-and-next-steps">Part 4: Production considerations</h2>
 
-### Production considerations
+This pipeline is deliberately simple - one file in, one table out. Moving toward production
+means adding fail-safety to the pipeline.
 
-- **Overwrite vs. MERGE** — The current job does a full overwrite. For append-only feeds this is fine; for update-heavy data you'd want an upsert/merge strategy with a deduplication key.
-- **Batch S3 events using an SQS queue** — Each file triggers a full execution. For high-frequency small files, a micro-batching strategy would reduce per-file overhead.
-- **DLQ for operational safety** — Failed events currently surface only in Step Functions execution history, and stack deletion can remove bucket data. In production, add a DLQ to the EventBridge target and set bucket `DeletionPolicy` to `Retain`.
+The most immediate gap is **durability**. The DataBucket has no `DeletionPolicy`, so tearing
+down the stack removes it. Setting `Retain` is a one-line fix but easy to forget.
 
-### Future additions
+Next is **throughput**. Right now each file triggers its own execution. That's fine at low
+volume, but at dozens of files per minute the per-execution overhead adds up. Fronting the
+EventBridge rule with an SQS queue and a small batching window lets multiple files share a
+single state machine run, cutting Step Functions transitions and EMR cold starts.
 
-- Schema evolution handling — detect new columns in Parquet and evolve the Iceberg schema
-- Data quality checks (Great Expectations or Deequ) as a pre-write gate
-- Multi-account deployment via AWS Organizations + StackSets
+Finally, there's the data schema itself. The table schema is defined in the SAM template,
+which means schema changes go through version control and deploy — intentional, not accidental.
+A lightweight data quality check before the write in EMR (validating column types and
+rejecting unexpected schemas) would make the pipeline not just observable, but trustworthy.
 
 ### Summary
 
