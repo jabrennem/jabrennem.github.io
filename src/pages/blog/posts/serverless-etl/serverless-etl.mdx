@@ -8,9 +8,10 @@ keywords: "AWS SAM · S3 · EventBridge · Step Functions · EMR Serverless · A
 search: serverless etl s3 eventbridge step functions emr serverless apache iceberg data lake lakehouse athena ingestion
 repoUrl: https://github.com/jabrennem/serverless-etl-s3-tables
 outline:
-  - What problem does this solve?
-  - Writing a reliable EMR Serverless job
-  - "Operating the pipeline: retries, data layout, and costs"
+  - Problem and solution
+  - Implementation
+  - Demo and Results
+  - Tradeoffs and next steps
 ---
 
 import ArchitectureDiagram from './ArchitectureDiagram';
@@ -21,80 +22,76 @@ import { Link } from 'react-router-dom';
 
 export const Thumbnail = () => <ArchitectureDiagram thumbnail />;
 
-An in-depth walkthrough of a production ready serverless ETL pipeline that ingests
-Parquet files from S3 into managed Apache Iceberg tables using AWS SAM, Step Functions,
-Lambda, and EMR Serverless.
+This project shows how I approach a data engineering architecture. It addresses a common challenge of 
+reliably ingesting Parquet files from S3 into queryable Apache Iceberg tables without keeping compute 
+resources running between workloads.
+
+I start with the requirements, explain how they shaped the storage, orchestration, and compute layers, 
+and then walk through the AWS SAM implementation. I finish with a cost analysis, current 
+tradeoffs, and the improvements I would make next.
 
 [View the repository on GitHub →](https://github.com/jabrennem/serverless-etl-s3-tables)
 
 <nav className="table-of-contents" aria-label="Table of contents">
   <p className="eyebrow">On this page</p>
   <ol>
-    <li><Link to="#ingestion-boundary-and-event-flow">What problem does this solve?</Link></li>
-    <li><Link to="#infrastructure-as-code">Infrastructure as code</Link></li>
-    <li><Link to="#operating-the-pipeline">Deploy and run the workflow</Link></li>
-    <li><Link to="#tradeoffs-and-next-steps">Production considerations and future additions</Link></li>
+    <li><Link to="#problem-and-solution">Problem and solution</Link></li>
+    <li><Link to="#implementation">Implementation</Link></li>
+    <li><Link to="#demo-and-results">Demo and Results</Link></li>
+    <li><Link to="#tradeoffs-and-next-steps">Tradeoffs and next steps</Link></li>
   </ol>
 </nav>
 
 <ArchitectureDiagram />
 
 <p className="part-kicker"><span>The problem</span><span aria-hidden="true">→</span><span>The solution</span></p>
-<h2 id="ingestion-boundary-and-event-flow">Part 1: What problem does this solve?</h2>
+<h2 id="problem-and-solution">Part 1: Problem and solution</h2>
 
 ### The problem
 
-In this new world of AI applications, data engineering skills are more critical than ever. A common challenge for teams 
-who manage large datasets on AWS is: how do you reliably ingest files from S3 into a queryable data store? The solution 
-needs to be timely, cost-effective, and observable. You need a system that responds
-the moment new datasets land in S3, transforms them into a structured format, and stores them in a way that allows for 
-other services like Athena to query them directly.
+Consider an upstream service that produces Parquet files and uploads them to S3. An analytics team needs 
+the data ingested into managed Apache Iceberg tables in our data catalog in a timely manner. Uploads are infrequent 
+and unpredictable, so the workload does not justify running resources.
 
-<br/>
+That leaves three requirements for the pipeline. It should start processing when a file arrives, scale 
+back down after the work finishes, and expose enough execution history to trace failures.
 
-In order for it to be timely, the solution needs to be event-driven, so that it can respond to new data as it is 
-uploaded. In order for it to be cost-effective, the solution needs to scale up and down as needed without incurring 
-unnecessary costs. Finally, in order for it to be observable, the orchestration layer needs to provide visibility into 
-the data ingestion process and any errors that may occur so they can be diagnosed and resolved quickly.
-
-<div className="design-principles" aria-label="Architecture principles">
+<div className="design-principles" aria-label="Pipeline requirements">
   <div>
     <p className="design-principle-number">01</p>
-    <h4>Event-driven</h4>
-    <p>React to new data as soon as it arrives.</p>
+    <h4>Timely</h4>
+    <p>Start processing as soon as a file arrives.</p>
   </div>
   <div>
     <p className="design-principle-number">02</p>
-    <h4>Serverless</h4>
-    <p>Scale for the workload, then back down to zero.</p>
+    <h4>Cost-effective</h4>
+    <p>Avoid running compute between infrequent uploads.</p>
   </div>
   <div>
     <p className="design-principle-number">03</p>
     <h4>Observable</h4>
-    <p>Make every execution and failure easy to understand.</p>
+    <p>Make each execution and failure easy to trace.</p>
   </div>
 </div>
-
 ### The solution
 
-There are 3 layers to this solution architecture:
-  - Storage
-  - Orchestration
-  - Compute
+I split the solution into three layers so each concern can be designed and operated
+independently:
+
+- Storage
+- Orchestration
+- Compute
 
 <div className="architecture-layer-heading">
   <span>01</span>
   <h4>Storage</h4>
 </div>
 
-For storage, we have to consider locations for both the incoming source data feed and the transformed output data. The transformed data
-will be referenced by downstream services and analytics teams. For this reason, we will use a common and highly optimized data store, 
-Apache Iceberg. In this architecture, the source data is stored in a general S3 bucket, while the transformed data is stored 
-in AWS managed Iceberg tables using S3 Table Buckets. This allows for a clear separation of concerns between the raw data and the 
-transformed data.
-
-We want to give the incoming data feed a clear location in the S3 bucket, so we will make sure that data is uploaded with a prefix 
-`feed/`. This allows us to easily identify objects as new data to be ingested.
+This architecture separates storage locations for the incoming data feed and the Iceberg table data referenced 
+by downstream services and analytics teams. I store the source data in a general S3 bucket and use S3 Table Buckets 
+for the AWS managed Iceberg tables. This allows for a clear separation between raw data and the catalog table 
+data. Incoming files are uploaded under the feed/ prefix, giving the pipeline a clear boundary for identifying 
+new data to ingest.
 
 <StorageDiagram />
 
@@ -103,13 +100,11 @@ We want to give the incoming data feed a clear location in the S3 bucket, so we 
   <h4>Orchestration</h4>
 </div>
 
-The orchestration layer is responsible for coordinating the ingestion process. The first step is to detect when new `feed/` objects
-are created. Conveniently, the S3 bucket can be configured to send events to EventBridge. Using an EventBridge rule, we can filter for 
-the `feed/` prefix and trigger whichever downstream process we want.
-
-In an AWS environment, I'm a huge fan of the Step Functions service for running multi-step workflows. It provides a visual representation
-of the workflow, built-in error handling, and the ability to run parallel tasks. This checks off the boxes for timeliness, cost-effectiveness, 
-and observability. The Step Functions state machine will be triggered by the EventBridge rule.
+The orchestration layer is responsible for coordinating the ingestion process. The first step is to detect when new 
+`feed/` objects are created. I configure the S3 bucket to send events to EventBridge. EventBridge rules can filter 
+for events with the `feed/` prefix and then trigger a Step Functions state machine. Step Functions provides a visual 
+execution history, built-in error handling, and support to run parallel tasks. Both EventBridge and Step Functions are
+managed behind the scenes, so the entire orchestration layer is serverless and scales automatically.
 
 <OrchestrationDiagram />
 
@@ -118,22 +113,18 @@ and observability. The Step Functions state machine will be triggered by the Eve
   <h4>Compute</h4>
 </div>
 
-Now that we have a way to detect new data and orchestrate the ingestion process, we need a compute layer to actually perform the 
-transformation. I have found that EMR Serverless and Spark is a great option for this. EMR Serverless gives us direct control over the
-Spark session configuration. The S3 Tables integration exposes the bucket through Glue's federated `s3tablescatalog`,
-allowing Spark to read from and write to the Iceberg tables.
+The compute layer loads the incoming Parquet data into Iceberg. The current job reads each file as-is and writes 
+its rows to the target table. I use Spark on EMR Serverless because it gives me control over the Spark configuration 
+without keeping a cluster running between jobs. The Amazon S3 Tables integration exposes the table bucket through Glue's 
+federated `s3tablescatalog`, allowing Spark to read from and write to the Iceberg tables.
 
-Outside of transforming the data, there is an opportunity to capture runtime statistics. This 
-adds to the observability of the ETL pipeline and allows for downstream consumers to react. For example, we can capture the number
-of rows in the source parquet file, averages of certain columns, or any other custom metrics. Downstream services can use this 
-information to trigger notifications or alert on anomalies. For this solution, the job will write the stats as a JSON file to a separate 
-location in the source data S3 bucket, such as `runs/<execution-id>/stats/`. This way we can easily correlate the stats with the 
-specific execution of the state machine, and the relevant source data is also in the same bucket.
+There is an opportunity for collecting runtime statistics that downstream services can use for notifications or 
+anomaly detection. The job writes these statistics as JSON under `runs/<execution-id>/stats/` in the source S3 
+bucket. Using the execution ID connects the output to a specific Step Functions execution.
 
-Normally in step functions that run these long-running jobs, I like to use a Lambda function to validate the input data according to a
-JSON schema and prepare the input for downstream tasks. The user experience is nicer because it means that we can fail faster and cheaper 
-if the input is malformed or if the file doesn't exist (maybe the file was deleted before the state machine started), and the EMR job can
-just focus on the transformation.
+Before starting EMR Serverless, I use a Lambda function to validate the EventBridge payload and map each source file to an 
+Iceberg table. This allows malformed or unmapped input to fail quickly and cheaply while keeping the Spark job focused on 
+loading the data.
 
 <ComputeDiagram />
 
@@ -146,10 +137,10 @@ just focus on the transformation.
 
 <br/>
 
-<p className="part-kicker"><span>The Source Code</span></p>
-<h2 id="infrastructure-as-code">Part 2: Infrastructure as code using AWS SAM</h2>
+<p className="part-kicker"><span>Implementation</span></p>
+<h2 id="implementation">Part 2: Implementation</h2>
 
-The entire stack is defined in a single `template.yaml` using the AWS SAM transform. This section walks 
+The entire stack is defined in a single `template.yaml` using AWS SAM. This section walks 
 through what goes into each layer of the architecture that we mapped out in part 1. The full 
 source code is available in the [GitHub repository](https://github.com/jabrennem/serverless-etl-s3-tables).
 
@@ -515,7 +506,7 @@ the state machine so structured metadata flows downstream without parsing Spark 
 
 <br/>
 
-<h2 id="operating-the-pipeline">Part 3: Deploy and run the workflow</h2>
+<h2 id="demo-and-results">Part 3: Demo and Results</h2>
 
 <div className="architecture-layer-heading">
   <span>01</span>
@@ -769,7 +760,7 @@ teams.
 
 <br/>
 
-<h2 id="tradeoffs-and-next-steps">Part 4: Production considerations</h2>
+<h2 id="tradeoffs-and-next-steps">Part 4: Tradeoffs and next steps</h2>
 
 This pipeline is deliberately simple - one file in, one table out. Moving toward production
 means adding fail-safety to the pipeline.
