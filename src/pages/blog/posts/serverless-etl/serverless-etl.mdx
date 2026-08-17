@@ -140,31 +140,17 @@ loading the data.
 <p className="part-kicker"><span>Implementation</span></p>
 <h2 id="implementation">Part 2: Implementation</h2>
 
-The entire stack is defined in a single `template.yaml` using AWS SAM. This section walks 
-through what goes into each layer of the architecture that we mapped out in part 1. The full 
-source code is available in the [GitHub repository](https://github.com/jabrennem/serverless-etl-s3-tables).
+The entire stack is defined in a single `template.yaml` using AWS SAM. This section walks
+through what goes into each layer of the architecture that we mapped out in part 1. Security is applied
+within each layer rather than treated as a separate component. The full source code is available in the
+[GitHub repository](https://github.com/jabrennem/serverless-etl-s3-tables).
 
 <div className="architecture-layer-heading">
   <span>01</span>
-  <h4>Security foundations</h4>
-</div>
-
-Before we dive into the code, here are some security best practices that this stack includes:
-
-- **KMS key with auto-rotation** — Customer-managed encryption for all data at rest; bucket-key enabled to reduce API costs.
-- **S3 Bucket policy** — Denies non-SSL traffic; scopes access to the AWS Organization via `aws:PrincipalOrgID`.
-- **Versioning + lifecycle** — 30-day non-current version expiry balances recovery with storage costs.
-- **Access logging** — Logs to a separate bucket with a stack-specific prefix.
-- **IAM: least-privilege per service** — Separate roles per actor, ARNs scoped as tightly as possible.
-- **Optional Lake Formation integration** — Accounts that enforce Lake Formation
-  permissions need additional grants for the EMR role.
-
-<div className="architecture-layer-heading">
-  <span>02</span>
   <h4>Storage</h4>
 </div>
 
-### KMS Key Encryption
+### Encrypting the data bucket
 
 A customer-managed KMS key encrypts every object in the data bucket. This is very important when incoming data is
 sensitive like PII or health information. Auto-rotation is enabled and the bucket uses S3 Bucket Key to reduce 
@@ -178,7 +164,7 @@ EncryptionKey:
     EnableKeyRotation: true
 ```
 
-### DataBucket
+### Organizing the data bucket
 
 In this design, we are using the 'DataBucket' for a few different purposes:
   - `feed/` the source data feed
@@ -259,7 +245,7 @@ BucketPolicy:
               aws:PrincipalOrgID: !Ref PrincipalOrgId
 ```
 
-### S3 Tables Resources
+### Defining the Iceberg destination
 
 Three CloudFormation resources define the S3 Table Bucket destination. S3 Table Buckets use
 a 3 layer hierarchy for accessing the Iceberg tables.
@@ -307,11 +293,11 @@ IcebergTestDataTable:
 ```
 
 <div className="architecture-layer-heading">
-  <span>03</span>
+  <span>02</span>
   <h4>Orchestration</h4>
 </div>
 
-### State Machine
+### Coordinating independent loads
 
 The state machine language comes with a few helpful tools that reduces our need for futher lambdas. We use 
 JSONata (not JSONPath) which allows for more complex data transformations in our state definitions and the
@@ -362,7 +348,7 @@ Step Functions console.
 }
 ```
 
-### Event Rule and Input Transformer
+### Starting the workflow from S3
 
 An EventBridge rule filters for `Object Created` events under the `feed/` prefix
 and invokes the state machine via an `InputTransformer` that extracts the S3 key
@@ -399,14 +385,14 @@ FeedUploadRule:
 ```
 
 The `EventBridgeStateMachineRole` has a single permission — `states:StartExecution`
-scoped to the state machine ARN.
+scoped to the state machine ARN. This keeps the event trigger limited to starting this workflow.
 
 <div className="architecture-layer-heading">
-  <span>04</span>
+  <span>03</span>
   <h4>Compute</h4>
 </div>
 
-### Validate Input Lambda
+### Failing before EMR starts
 
 A sub-second Lambda that fails the execution fast and cheap before running EMR.
 It validates the EventBridge payload against a JSON Schema and resolves which Iceberg
@@ -451,7 +437,7 @@ Table resolution matches the S3 key against regex patterns sorted by specificity
 }
 ```
 
-### EMR Serverless App
+### Scaling compute to zero
 
 A Spark application on EMR release 7.8.0 (ARM64). Auto-start and auto-stop with a
 2-minute idle timeout means zero cost when the pipeline isn't running.
@@ -470,7 +456,10 @@ EmrApp:
       IdleTimeoutMinutes: 2
 ```
 
-#### PySpark script highlights
+The validation Lambda and EMR jobs use separate execution roles so each can be limited to the resources it needs.
+When Lake Formation governs Data Catalog access, the EMR role also needs the grants shown in Part 3.
+
+#### Loading Parquet into Iceberg
 
 The `load_data.py` script is intentionally minimal: read Parquet, write to Iceberg
 via `INSERT OVERWRITE`, and emit a stats JSON for the orchestrator. Catalog configuration
