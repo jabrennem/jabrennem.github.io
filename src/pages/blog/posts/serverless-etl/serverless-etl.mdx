@@ -140,9 +140,9 @@ loading the data.
 <p className="part-kicker"><span>Implementation</span></p>
 <h2 id="implementation">Part 2: Implementation</h2>
 
-The entire stack is defined in a single `template.yaml` using AWS SAM. This section walks
-through what goes into each layer of the architecture that we mapped out in part 1. Security is applied
-within each layer rather than treated as a separate component. The full source code is available in the
+Part 1 described the architecture in three layers. This section shows how I implement each layer using
+AWS SAM and application code. Security is applied within each layer rather than treated as a separate
+component. The full source code is available in the
 [GitHub repository](https://github.com/jabrennem/serverless-etl-s3-tables).
 
 <div className="architecture-layer-heading">
@@ -152,9 +152,9 @@ within each layer rather than treated as a separate component. The full source c
 
 ### Encrypting the data bucket
 
-A customer-managed KMS key encrypts every object in the data bucket. This is very important when incoming data is
-sensitive like PII or health information. Auto-rotation is enabled and the bucket uses S3 Bucket Key to reduce 
-per-request KMS calls.
+I use a customer-managed KMS key to encrypt objects in the data bucket because incoming files may contain
+sensitive data such as PII or health information. Automatic rotation manages the key lifecycle, while an
+S3 Bucket Key reduces calls to KMS and their associated cost.
 
 ```yaml
 EncryptionKey:
@@ -166,14 +166,15 @@ EncryptionKey:
 
 ### Organizing the data bucket
 
-In this design, we are using the 'DataBucket' for a few different purposes:
-  - `feed/` the source data feed
-  - `emr/` the runtime PySpark script
-  - `runs/` the output for runtime statistics
+I use the `DataBucket` for three types of objects:
 
-The EventBridge notifications are enabled so our event rule defined later on can react to `feed/` uploads.
-We also apply very common production practices, such as enabling versioning, public access blocks, access logging, 
-and lifecycle rules. 
+- `feed/` stores the incoming data feed.
+- `emr/` stores the runtime PySpark script.
+- `runs/` stores runtime statistics.
+
+The bucket publishes object events to EventBridge so the pipeline can react to `feed/` uploads. I also enable
+versioning, block public access, send access logs to a separate bucket, and expire noncurrent versions after 30 days.
+These settings provide recovery and audit trails without retaining old object versions indefinitely.
 
 ```yaml
 DataBucket:
@@ -206,8 +207,8 @@ DataBucket:
             NoncurrentDays: 30
 ```
 
-To further control access to the bucket, we apply a bucket policy that rejects any request 
-that does not use HTTPS and blocks access outside of the organization.
+The bucket policy denies requests that do not use HTTPS and grants the listed actions only to principals in the
+configured AWS Organization.
 
 ```yaml
 BucketPolicy:
@@ -247,15 +248,14 @@ BucketPolicy:
 
 ### Defining the Iceberg destination
 
-Three CloudFormation resources define the S3 Table Bucket destination. S3 Table Buckets use
-a 3 layer hierarchy for accessing the Iceberg tables.
+Amazon S3 Tables organizes Iceberg resources into three levels:
 
-  - Table Bucket
-  - The Namespace
-  - The Table
+- Table bucket
+- Namespace
+- Table
 
-I chose to declare the table in the template to make this service simple. It also means it exists before 
-the first pipeline run, so there is no "create table if notexists" logic in Spark.
+I declare all three resources in the template so the table schema is version-controlled and the destination exists
+before the first pipeline run. This keeps table-creation logic out of Spark.
 
 ```yaml
 IcebergTableBucket:
@@ -299,43 +299,17 @@ IcebergTestDataTable:
 
 ### Coordinating independent loads
 
-The state machine language comes with a few helpful tools that reduces our need for futher lambdas. We use 
-JSONata (not JSONPath) which allows for more complex data transformations in our state definitions and the
-`.sync` integration pattern so Step Functions polls EMR until completion.
+I keep the workflow logic in Step Functions instead of introducing additional Lambda functions. JSONata reshapes
+the workflow payload inside the state definition, while the `.sync` integration pattern lets Step Functions wait
+for each EMR Serverless job to finish.
 
-#### ASL highlights
+A Map state iterates over the resolved source-to-table mappings, giving each input file an independent load path.
+Each item starts `load_data.py` synchronously and passes the source object, catalog ID, namespace, target table,
+and an execution-scoped statistics location. A failed item does not prevent the remaining items from running.
 
-There is a Map state which iterates over resolved table mappings, so each input file gets an
-independent EMR → stats → emit pipeline. Its input is simply:
-
-```json
-"Items": "{% $states.input.SourceFileTableNameMapping %}"
-```
-
-Each item submits `load_data.py` synchronously, passing the source object, catalog ID,
-namespace, target table, and an execution-scoped stats location. Failed items route to
-`Fail Item`, so one table's failure does not prevent the remaining items from running.
-
-The submit configuration is kept separate from the Map logic defined as the `SparkSubmitParameters` string.
-
-```bash
---conf spark.jars=/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar
---conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
---conf spark.sql.catalog.s3tablesbucket=org.apache.iceberg.spark.SparkCatalog
---conf spark.sql.catalog.s3tablesbucket.type=rest
---conf spark.sql.catalog.s3tablesbucket.uri=https://glue.${AWS::Region}.amazonaws.com/iceberg
---conf spark.sql.catalog.s3tablesbucket.warehouse=${GlueCatalogId}
---conf spark.sql.catalog.s3tablesbucket.rest.sigv4-enabled=true
---conf spark.sql.catalog.s3tablesbucket.rest.signing-name=glue
---conf spark.sql.catalog.s3tablesbucket.rest.signing-region=${AWS::Region}
-```
-
-Together, these configure Spark's `s3tablesbucket` catalog to use the AWS Glue Iceberg
-REST endpoint, sign requests with SigV4, and enable Iceberg's Spark extensions.
-
-After the Map completes, a Choice state counts failed items — if any table has
-`status: "failed"`, the execution fails. This makes partial success visible in the
-Step Functions console.
+After the Map completes, a Choice state counts failed items. If any item has `status: "failed"`, the overall
+execution fails. This preserves the completed loads while making partial failure visible in the Step Functions
+console.
 
 ```json
 "Check Table Results": {
@@ -350,9 +324,8 @@ Step Functions console.
 
 ### Starting the workflow from S3
 
-An EventBridge rule filters for `Object Created` events under the `feed/` prefix
-and invokes the state machine via an `InputTransformer` that extracts the S3 key
-into the expected shape that will be sent to the `ValidateInputFunction`.
+An EventBridge rule filters S3 `Object Created` events for keys under the `feed/` prefix and starts the state
+machine. Its `InputTransformer` extracts the S3 key and shapes the input expected by the `ValidateInputFunction`.
 
 ```yaml
 FeedUploadRule:
@@ -384,8 +357,8 @@ FeedUploadRule:
             }
 ```
 
-The `EventBridgeStateMachineRole` has a single permission — `states:StartExecution`
-scoped to the state machine ARN. This keeps the event trigger limited to starting this workflow.
+I give the `EventBridgeStateMachineRole` only `states:StartExecution`, scoped to this state machine. This keeps the
+event trigger from starting other workflows.
 
 <div className="architecture-layer-heading">
   <span>03</span>
@@ -394,9 +367,8 @@ scoped to the state machine ARN. This keeps the event trigger limited to startin
 
 ### Failing before EMR starts
 
-A sub-second Lambda that fails the execution fast and cheap before running EMR.
-It validates the EventBridge payload against a JSON Schema and resolves which Iceberg
-table to target using regex patterns from `file_mapping.json`.
+I use a sub-second Lambda to validate the input before starting EMR Serverless. It checks the EventBridge payload
+against a JSON Schema and maps each source file to an Iceberg table using regex patterns from `file_mapping.json`.
 
 ```yaml
 ValidateInputFunction:
@@ -405,10 +377,6 @@ ValidateInputFunction:
     Handler: validate_input.handler
     CodeUri: lambda/validate_input/
 ```
-
-#### Handler highlights
-
-This is the main handler behind the Lambda.
 
 ```python
 @logger.inject_lambda_context
@@ -425,9 +393,8 @@ def handler(event, context):
     return event
 ```
 
-Table resolution matches the S3 key against regex patterns sorted by specificity
-(longest first). Adding a new ingestion target requires only a new entry in
-`file_mapping.json` and a corresponding table resource in the SAM template.
+Table resolution checks patterns from longest to shortest so more specific matches take precedence. Adding an
+ingestion target requires a new entry in `file_mapping.json` and a corresponding table resource in the SAM template.
 
 ```json
 {
@@ -439,8 +406,8 @@ Table resolution matches the S3 key against regex patterns sorted by specificity
 
 ### Scaling compute to zero
 
-A Spark application on EMR release 7.8.0 (ARM64). Auto-start and auto-stop with a
-2-minute idle timeout means zero cost when the pipeline isn't running.
+I configure an ARM64 Spark application on EMR release 7.8.0. Auto-start launches the application when a job arrives,
+and a two-minute idle timeout stops it afterward. This leaves no EMR compute running between loads.
 
 ```yaml
 EmrApp:
@@ -456,14 +423,29 @@ EmrApp:
       IdleTimeoutMinutes: 2
 ```
 
-The validation Lambda and EMR jobs use separate execution roles so each can be limited to the resources it needs.
-When Lake Formation governs Data Catalog access, the EMR role also needs the grants shown in Part 3.
+The validation Lambda and EMR jobs use separate execution roles, allowing each role to be limited to the resources
+it needs. When Lake Formation governs Data Catalog access, the EMR role also needs the grants shown in Part 3.
 
 #### Loading Parquet into Iceberg
 
-The `load_data.py` script is intentionally minimal: read Parquet, write to Iceberg
-via `INSERT OVERWRITE`, and emit a stats JSON for the orchestrator. Catalog configuration
-lives entirely in `SparkSubmitParameters`, keeping the script portable.
+The Spark submission parameters configure the `s3tablesbucket` catalog to use the AWS Glue Iceberg REST endpoint,
+sign requests with SigV4, and enable Iceberg's Spark extensions.
+
+```bash
+--conf spark.jars=/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar
+--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+--conf spark.sql.catalog.s3tablesbucket=org.apache.iceberg.spark.SparkCatalog
+--conf spark.sql.catalog.s3tablesbucket.type=rest
+--conf spark.sql.catalog.s3tablesbucket.uri=https://glue.${AWS::Region}.amazonaws.com/iceberg
+--conf spark.sql.catalog.s3tablesbucket.warehouse=${GlueCatalogId}
+--conf spark.sql.catalog.s3tablesbucket.rest.sigv4-enabled=true
+--conf spark.sql.catalog.s3tablesbucket.rest.signing-name=glue
+--conf spark.sql.catalog.s3tablesbucket.rest.signing-region=${AWS::Region}
+```
+
+The `load_data.py` script intentionally does not transform the source data. It reads Parquet, loads the rows into
+Iceberg with `INSERT OVERWRITE`, and writes a statistics file for the state machine. I keep the catalog configuration
+in `SparkSubmitParameters` so the script remains portable.
 
 ```python
 def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
@@ -488,8 +470,8 @@ def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
     return 0
 ```
 
-The stats file written to `runs/<execution-id>/stats/<table>.json` is read back by
-the state machine so structured metadata flows downstream without parsing Spark logs.
+The state machine reads the file written to `runs/<execution-id>/stats/<table>.json`, allowing structured metadata
+to flow downstream without parsing Spark logs.
 
 ---
 
