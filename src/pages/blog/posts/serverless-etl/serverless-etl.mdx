@@ -2,7 +2,7 @@
 slug: serverless-etl
 status: "Series 01 · Serverless ETL"
 featured: true
-title: Building an Event-Driven Data Lake on AWS with Apache Iceberg
+title: Building an Event-Driven Parquet-to-Iceberg Pipeline with Amazon S3 Tables
 description: "The initial architecture: prefix-scoped S3 events, EventBridge routing, Step Functions orchestration, and EMR Serverless execution."
 keywords: "AWS SAM · S3 · EventBridge · Step Functions · EMR Serverless · Apache Iceberg · Lakehouse"
 search: serverless etl s3 eventbridge step functions emr serverless apache iceberg data lake lakehouse athena ingestion
@@ -113,8 +113,9 @@ managed behind the scenes, so the entire orchestration layer is serverless and s
   <h4>Compute</h4>
 </div>
 
-The compute layer loads the incoming Parquet data into Iceberg. The current job reads each file as-is and writes 
-its rows to the target table. I use Spark on EMR Serverless because it gives me control over the Spark configuration 
+The compute layer loads the incoming Parquet data into Iceberg. Each accepted Parquet file is treated as an additive
+batch. The job reads its rows without applying business transformations and appends them to the target table. I use
+Spark on EMR Serverless because it gives me control over the Spark configuration
 without keeping a cluster running between jobs. The Amazon S3 Tables integration exposes the table bucket through Glue's 
 federated `s3tablescatalog`, allowing Spark to read from and write to the Iceberg tables.
 
@@ -424,7 +425,10 @@ EmrApp:
 ```
 
 The validation Lambda and EMR jobs use separate execution roles, allowing each role to be limited to the resources
-it needs. When Lake Formation governs Data Catalog access, the EMR role also needs the grants shown in Part 3.
+it needs. When Lake Formation governs Data Catalog access, IAM permissions alone are not enough. The EMR role also
+receives `CREATE_DATABASE` and `DESCRIBE` on the catalog; `DESCRIBE`, `ALTER`, and `CREATE_TABLE` on the `default`
+namespace; and `SELECT`, `INSERT`, `DESCRIBE`, `ALTER`, and `DROP` on its tables. I apply these grants after deployment
+because the script derives both the deployed role and the account-specific S3 Tables catalog ID.
 
 #### Loading Parquet into Iceberg
 
@@ -443,9 +447,9 @@ sign requests with SigV4, and enable Iceberg's Spark extensions.
 --conf spark.sql.catalog.s3tablesbucket.rest.signing-region=${AWS::Region}
 ```
 
-The `load_data.py` script intentionally does not transform the source data. It reads Parquet, loads the rows into
-Iceberg with `INSERT OVERWRITE`, and writes a statistics file for the state machine. I keep the catalog configuration
-in `SparkSubmitParameters` so the script remains portable.
+The `load_data.py` script intentionally does not apply business transformations to the source data. It reads the
+Parquet rows, appends them to Iceberg using Spark's DataFrameWriterV2 API, and writes a statistics file for the state
+machine. I keep the catalog configuration in `SparkSubmitParameters` so the script remains portable.
 
 ```python
 def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
@@ -460,12 +464,11 @@ def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
     df = spark.read.parquet(input_path)
     count = df.count()
 
-    df.createOrReplaceTempView("source_data")
-    spark.sql(f"INSERT OVERWRITE {iceberg_table} SELECT * FROM source_data")
+    df.writeTo(iceberg_table).append()
 
     if stats_s3_uri:
-        _write_stats_file(spark, stats_s3_uri, input_path, catalog_id,
-                          namespace, table_name, count)
+        _write_stats_file(stats_s3_uri, input_path, catalog_id, namespace,
+                          table_name, count)
     spark.stop()
     return 0
 ```
@@ -479,13 +482,19 @@ to flow downstream without parsing Spark logs.
 
 <h2 id="demo-and-results">Part 3: Demo and Results</h2>
 
+To test the architecture, I deploy the stack and upload a three-row Parquet file to the `feed/` prefix. I then follow
+the Step Functions execution, verify that the rows reached the Iceberg table, and use the recorded runtime to estimate
+the cost of one ingestion.
+
 <div className="architecture-layer-heading">
   <span>01</span>
-  <h4>Commands</h4>
+  <h4>Deploy the stack</h4>
 </div>
 
-The deployment process follows a typical SAM lifecycle. Before deploying, open `samconfig.yaml` and fill in
-the `parameter_overrides` values for your environment:
+### Configure the deployment
+
+Before deploying, I add the AWS Organization ID and the existing access logging bucket to the `parameter_overrides`
+in `samconfig.yaml`:
 
 ```yaml
 parameter_overrides:
@@ -493,32 +502,41 @@ parameter_overrides:
   - LoggingBucketName=my-logging-bucket  # existing S3 bucket for access logs
 ```
 
-Once those are set, specify a profile and run sam build/deploy. A 
-`post-deploy.sh` script handles uploading the PySpark entrypoint to S3 and applies Lake Formation grants 
-for accounts that use Lake Formation to govern Data Catalog access.
+### Build and deploy
+
+With those values set, I specify an AWS profile and run the standard SAM build and deploy commands:
 
 ```bash
 export AWS_PROFILE=profile_name
 sam build
 sam deploy
-./scripts/post-deploy.sh
 ```
 
 `sam build` packages the Lambda function and produces the transformed template used
-for deployment.
+for deployment. This output is the first checkpoint that the application code and template built successfully.
 
 <figure>
   <img src="/assets/media/serverless-etl/sam_build.png" alt="Terminal output showing a successful SAM build for the ValidateInputFunction Lambda." style={{width: '100%'}} />
 </figure>
 
 After `sam deploy` completes, CloudFormation returns the stack outputs, including
-the name of the data bucket used by the pipeline.
+the name of the data bucket used by the pipeline. These outputs confirm that the stack is ready for the
+post-deployment setup.
 
 <figure>
   <img src="/assets/media/serverless-etl/sam_deploy.png" alt="Terminal output showing a successful SAM deployment and the deployed stack's DataBucketName output." style={{width: '100%'}} />
 </figure>
 
-The post-deploy script is idempotent — safe to re-run on every deploy:
+### Complete the post-deployment setup
+
+The post-deployment script uploads the PySpark entrypoint to S3. In accounts where Lake Formation governs Data
+Catalog access, it also applies the grants required by the EMR role.
+
+```bash
+./scripts/post-deploy.sh
+```
+
+The script is idempotent, so it is safe to run after every deployment:
 
 ```bash
 # Upload PySpark entrypoint
@@ -536,37 +554,15 @@ aws lakeformation grant-permissions \
   <img src="/assets/media/serverless-etl/post_deploy.png" alt="Terminal output showing a successful post-deploy script run — uploading the PySpark script and applying Lake Formation grants." style={{width: '100%'}} />
 </figure>
 
-### Why the Lake Formation grants matter
-
-Lake Formation is optional here. By default, Lake Formation uses **Use only IAM access
-control** for new Data Catalog resources, so IAM policies control access. In the account
-used for this deployment, Lake Formation permissions governed the catalog instead. In
-that mode, IAM permissions alone are not enough for an EMR job to work with the catalog:
-the EMR role must also be explicitly granted access to the S3 Tables catalog, its
-`default` namespace, and the tables inside it.
-
-If your account retains the IAM-only default, the PySpark upload is the only
-post-deployment step needed; omit the Lake Formation grant commands.
-
-The script applies the least privileges the job needs at each level:
-
-- **Catalog** — `CREATE_DATABASE` and `DESCRIBE`, so the job can discover the catalog
-  and create a database if needed.
-- **Namespace** — `DESCRIBE`, `ALTER`, and `CREATE_TABLE`, so it can inspect and manage
-  the `default` namespace.
-- **Tables** — `SELECT`, `INSERT`, `DESCRIBE`, `ALTER`, and `DROP`, so it can read,
-  write, and maintain the Iceberg tables created by the pipeline.
-
-These grants are applied after deployment because the script derives both the deployed
-EMR role and the account-specific S3 Tables catalog ID. Re-running it is safe: grants
-that already exist are ignored.
+If the account uses IAM-only access control for the Data Catalog, only the PySpark upload is required and the Lake
+Formation grant commands can be omitted.
 
 <div className="architecture-layer-heading">
   <span>02</span>
-  <h4>Live Test</h4>
+  <h4>Run the pipeline</h4>
 </div>
 
-### Test data
+### Prepare the test file
 
 The test file is a minimal 3-row Parquet file (1.3 KB) with the same schema as the
 Iceberg table declared in the SAM template:
@@ -582,23 +578,9 @@ Iceberg table declared in the SAM template:
   </tbody>
 </table>
 
-If you want to generate your own test file, there's a script in the repo at
-`scripts/generate_test_data.py`:
+The repository includes `scripts/generate_test_data.py` for generating the file locally.
 
-```python
-import pyarrow as pa
-import pyarrow.parquet as pq
-
-table = pa.table({
-    "id": pa.array([1, 2, 3], type=pa.int64()),
-    "name": pa.array(["Alice", "Bob", "Charlie"], type=pa.string()),
-    "amount": pa.array([100.50, 200.75, 350.00], type=pa.float64()),
-})
-
-pq.write_table(table, "test-data.parquet")
-```
-
-### Trigger command
+### Trigger the workflow
 
 The `trigger.sh` script uploads a Parquet file to the `feed/` prefix, which fires
 the EventBridge rule and starts the state machine.
@@ -613,15 +595,10 @@ the EventBridge rule and starts the state machine.
   <img src="/assets/media/serverless-etl/trigger_sh.png" alt="Terminal output showing trigger.sh uploading a parquet file to the feed/ prefix and confirming the pipeline was triggered." style={{width: '100%'}} />
 </figure>
 
-Below you can see the uploaded parquet file in S3 under the `feed/` prefix.
+### Follow the execution
 
-<figure>
-  <img src="/assets/media/serverless-etl/s3-test-data-object.png" alt="S3 console showing the uploaded test-data.parquet file in the feed/ prefix of the data bucket." style={{maxWidth: '720px', width: '100%'}} />
-</figure>
-
-### Eventbridge and State Machine Input
-
-The EventBridge `InputTransformer` constructs this payload from the S3 event:
+The EventBridge `InputTransformer` constructs the following state machine input from the S3 event. The source key in
+this payload is the checkpoint that the object-created event crossed the ingestion boundary.
 
 ```json
 {
@@ -643,17 +620,11 @@ image below is what a successful execution looks like.
   <img src="/assets/media/serverless-etl/state-machine-succeeded.png" alt="Step Functions Graph view showing a succeeded execution — Validate Input, Load Tables map with Load Data, Get Stats Object, Emit Job Complete, Item Succeeded, then Check Table Results routing to Succeed." style={{maxWidth: '480px', width: '100%'}} />
 </figure>
 
-### Verify the loaded data
+### Verify the Iceberg table
 
 Open the `test_data` table in the S3 Tables console and select **Preview** to inspect
-the rows written by the pipeline.
-
-<figure>
-  <img src="/assets/media/serverless-etl/table_bucket_preview_button.png" alt="S3 Tables console for the test_data table with the Preview button highlighted." style={{width: '100%'}} />
-</figure>
-
-The preview confirms that all three records from the test file landed in the Iceberg
-table.
+the rows written by the pipeline. The preview confirms that all three records from the test file landed in the
+Iceberg table.
 
 <figure>
   <img src="/assets/media/serverless-etl/table_bucket_preview_data.png" alt="S3 Tables preview showing three test_data rows: Alice with 100.5, Bob with 200.75, and Charlie with 350." style={{width: '100%'}} />
@@ -661,12 +632,13 @@ table.
 
 <div className="architecture-layer-heading">
   <span>03</span>
-  <h4>Cost Breakdown</h4>
+  <h4>Review the result</h4>
 </div>
 
-The pipeline costs effectively nothing at rest. Here's the actual cost of one test
-execution processing a 1.3 KB Parquet file through 8 state transitions in 2 min 31 s
-total state machine duration:
+### Execution cost
+
+This execution processed a 1.3 KB Parquet file through eight state transitions in 2 minutes and 31 seconds. Using
+the recorded usage, I estimate the cost of this ingestion as follows:
 
 <table>
   <thead>
@@ -705,27 +677,17 @@ total state machine duration:
     <tr>
       <td><strong>Total</strong></td>
       <td></td>
-      <td><strong>≤ $0.016</strong></td>
+      <td><strong>≈ $0.016</strong></td>
     </tr>
   </tbody>
 </table>
 
-The cost is dominated almost entirely by EMR Serverless compute time. Everything else
-rounds to effectively zero. The 2-minute auto-stop idle timeout means the EMR
-application shuts down immediately after the job completes, so there's no ongoing cost
-between runs.
+EMR Serverless compute accounts for nearly all of the execution cost. After the job completes, the auto-stop timer
+begins and stops the application after two idle minutes. This removes idle EMR compute charges between loads, although
+stored data, logs, and the customer-managed KMS key can still incur ongoing costs.
 
-For context, Step Functions provides 4,000 free state transitions per month and Lambda
-includes 1M requests + 400,000 GB-seconds free — so for light development and testing,
-those services are literally $0.
-
-### Resource Tags
-
-The stack is tagged with an application identifier, which means all resources created by
-CloudFormation inherit the tag. This integrates with AWS Cost Explorer, AWS Budgets, and
-Cost Allocation Tags to track spend per pipeline — useful when you're running multiple
-workloads in the same account and want to attribute costs back to individual services or
-teams.
+The stack is tagged with an application identifier that CloudFormation passes to its resources. I can activate this
+tag for cost allocation and use it to track the pipeline in AWS Cost Explorer and AWS Budgets.
 
 ---
 
@@ -733,27 +695,45 @@ teams.
 
 <h2 id="tradeoffs-and-next-steps">Part 4: Tradeoffs and next steps</h2>
 
-This pipeline is deliberately simple - one file in, one table out. Moving toward production
-means adding fail-safety to the pipeline.
+This architecture is intentionally optimized for infrequent, unpredictable uploads. The demo proves that it can load
+one Parquet file into Iceberg without leaving compute running between workloads. Moving toward production would require
+stronger data protection, replay-safe writes, and a different strategy for higher throughput.
 
-The most immediate gap is **durability**. The DataBucket has no `DeletionPolicy`, so tearing
-down the stack removes it. Setting `Retain` is a one-line fix but easy to forget.
+### Protect persistent data
 
-Next is **throughput**. Right now each file triggers its own execution. That's fine at low
-volume, but at dozens of files per minute the per-execution overhead adds up. Fronting the
-EventBridge rule with an SQS queue and a small batching window lets multiple files share a
-single state machine run, cutting Step Functions transitions and EMR cold starts.
+The source bucket and Iceberg tables currently follow the CloudFormation stack lifecycle. Before using the pipeline for
+persistent data, I would add `DeletionPolicy: Retain` and `UpdateReplacePolicy: Retain` so deleting or replacing the stack
+cannot remove the data resources.
 
-Finally, there's the data schema itself. The table schema is defined in the SAM template,
-which means schema changes go through version control and deploy — intentional, not accidental.
-A lightweight data quality check before the write in EMR (validating column types and
-rejecting unexpected schemas) would make the pipeline not just observable, but trustworthy.
+### Make loads replay-safe
+
+The state machine makes failures visible, but observability is not recovery. I would add a dead-letter queue to capture
+events that EventBridge cannot deliver and preserve enough information to replay failed loads. Each load should also use
+the S3 object version as an idempotency key so retrying an event does not apply the same input twice.
+
+The current Spark job appends each file, matching the additive input contract. Because S3 events can be delivered more
+than once, replaying the same object could append its rows twice. A production implementation should propagate the
+bucket, object key, and version ID as an ingestion identity and use it to detect and reconcile duplicate deliveries.
+
+### Batch higher-volume ingestion
+
+Starting one execution per file keeps the low-volume path simple and timely. At higher volume, each file would also start
+its own EMR job and repeat the same startup overhead. I would route the EventBridge events through SQS and use an
+EventBridge Pipe to send a batch of messages to Step Functions. The batching window would reduce EMR cold starts at the 
+cost of delaying ingestion.
+
+### Validate and transform the data
+
+The Lambda function currently validates the workflow input and maps each source file to a table. It does not validate the
+Parquet schema or its contents. I would add schema and data quality checks in Spark before the write, then quarantine files
+that fail validation so they can be inspected and replayed.
+
+The current Spark job appends source rows without applying business transformations. Once the ingestion boundary is
+reliable, the job could also apply transformations or write separate curated tables for downstream consumers.
 
 ### Summary
 
-For data engineering teams, this is a practical way to turn an uploaded Parquet file
-into a queryable Iceberg table without keeping infrastructure running between workloads.
-New data is picked up as soon as it lands, each ingestion has a visible execution
-history, and Spark compute spins up only when there is work to do. The result is a
-pipeline that is timely, cost-effective, and observable, with clear places to extend it
-as data volume, table count, and operational requirements grow.
+For the original low-volume workload, the direct event trigger favors timeliness and simplicity, EMR Serverless removes
+idle compute, and Step Functions provides a visible execution history. The next additions follow from the limits of those
+choices: protect persistent data, make retries safe, batch work when volume justifies the added latency, and validate the
+data before introducing transformations.
