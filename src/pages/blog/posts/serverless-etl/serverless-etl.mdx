@@ -695,45 +695,20 @@ tag for cost allocation and use it to track the pipeline in AWS Cost Explorer an
 
 <h2 id="tradeoffs-and-next-steps">Part 4: Tradeoffs and next steps</h2>
 
-This architecture is intentionally optimized for infrequent, unpredictable uploads. The demo proves that it can load
-one Parquet file into Iceberg without leaving compute running between workloads. Moving toward production would require
-stronger data protection, replay-safe writes, and a different strategy for higher throughput.
+This architecture is designed for infrequent, unpredictable uploads. The demo I put together proves the core 
+workflow, but in production, it must also handle messier cases like duplicate events, higher traffic, 
+and invalid raw data. 
 
-### Protect persistent data
+Maybe I'll talk about these topics in future posts:
+  - Protect persistent data in S3 from stack deletion or replacement.
+  - Prevent data duplication by tracking which S3 object versions have already been ingested.
+  - Batch higher volume ingestion with an SQS queue and process multiple files in the same EMR job.
+  - Add data quality checks and inspect invalid files in a separate location
 
-The source bucket and Iceberg tables currently follow the CloudFormation stack lifecycle. Before using the pipeline for
-persistent data, I would add `DeletionPolicy: Retain` and `UpdateReplacePolicy: Retain` so deleting or replacing the stack
-cannot remove the data resources.
+## Summary
 
-### Make loads replay-safe
+Hope you enjoyed walking through this solution with me. This project demonstrates an event-driven pipeline that 
+loads Parquet files from S3 into Iceberg using EventBridge, Step Functions, and EMR Serverless. I deployed it 
+with AWS SAM and verified with a test run that cost roughly 2 cents. The design fits low-volume workloads and includes
+future direction for production.
 
-The state machine makes failures visible, but observability is not recovery. I would add a dead-letter queue to capture
-events that EventBridge cannot deliver and preserve enough information to replay failed loads. Each load should also use
-the S3 object version as an idempotency key so retrying an event does not apply the same input twice.
-
-The current Spark job appends each file, matching the additive input contract. Because S3 events can be delivered more
-than once, replaying the same object could append its rows twice. A production implementation should propagate the
-bucket, object key, and version ID as an ingestion identity and use it to detect and reconcile duplicate deliveries.
-
-### Batch higher-volume ingestion
-
-Starting one execution per file keeps the low-volume path simple and timely. At higher volume, each file would also start
-its own EMR job and repeat the same startup overhead. I would route the EventBridge events through SQS and use an
-EventBridge Pipe to send a batch of messages to Step Functions. The batching window would reduce EMR cold starts at the 
-cost of delaying ingestion.
-
-### Validate and transform the data
-
-The Lambda function currently validates the workflow input and maps each source file to a table. It does not validate the
-Parquet schema or its contents. I would add schema and data quality checks in Spark before the write, then quarantine files
-that fail validation so they can be inspected and replayed.
-
-The current Spark job appends source rows without applying business transformations. Once the ingestion boundary is
-reliable, the job could also apply transformations or write separate curated tables for downstream consumers.
-
-### Summary
-
-For the original low-volume workload, the direct event trigger favors timeliness and simplicity, EMR Serverless removes
-idle compute, and Step Functions provides a visible execution history. The next additions follow from the limits of those
-choices: protect persistent data, make retries safe, batch work when volume justifies the added latency, and validate the
-data before introducing transformations.
