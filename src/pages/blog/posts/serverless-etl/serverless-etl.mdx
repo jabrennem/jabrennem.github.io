@@ -203,13 +203,11 @@ IcebergTestDataTable:
 
 ### Coordinating multiple ingestions
 
-I keep the workflow logic in Step Functions instead of introducing additional Lambda functions. JSONata reshapes
-the workflow payload inside the state definition, while the `.sync` integration pattern lets Step Functions wait
-for each EMR Serverless job to finish.
-
-A Map state iterates over the resolved source-to-table mappings, giving each input file an independent load path.
-Each item starts `load_data.py` synchronously and passes the source object, catalog ID, namespace, target table,
-and an execution-scoped statistics location. A failed item does not prevent the remaining items from running.
+I keep the workflow logic in Step Functions rather than adding more Lambda functions. A Map state gives
+each input file its own load path — if one file fails, the rest still complete. Each iteration starts the
+EMR job synchronously and passes it the source object, target table, and a location for writing execution
+statistics. Inside the state definitions, JSONata handles payload reshaping and the `.sync` integration
+pattern blocks until each EMR job finishes.
 
 After the Map completes, a Choice state counts failed items. If any item has `status: "failed"`, the overall
 execution fails. This preserves the completed loads while making partial failure visible in the Step Functions
@@ -269,7 +267,7 @@ machine. This keeps the event trigger from starting other workflows.
   <h4>Compute</h4>
 </div>
 
-### Failing before EMR starts
+### Validate input before EMR starts
 
 I use a sub-second Lambda to validate the input before starting EMR Serverless. It checks the EventBridge payload
 against a JSON Schema and maps each source file to an Iceberg table using regex patterns from `file_mapping.json`.
@@ -334,20 +332,18 @@ the role ARN and catalog ID from the stack outputs.
 
 #### Loading Parquet into Iceberg
 
-The Spark submission parameters configure the `s3tablesbucket` catalog to use the AWS Glue Iceberg REST endpoint,
-sign requests with SigV4, and enable Iceberg's Spark extensions.
+The Spark submission parameters point the `s3tablesbucket` catalog at Glue's Iceberg REST endpoint with SigV4 signing:
 
 ```bash
---conf spark.jars=/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar
---conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
 --conf spark.sql.catalog.s3tablesbucket=org.apache.iceberg.spark.SparkCatalog
 --conf spark.sql.catalog.s3tablesbucket.type=rest
 --conf spark.sql.catalog.s3tablesbucket.uri=https://glue.${AWS::Region}.amazonaws.com/iceberg
 --conf spark.sql.catalog.s3tablesbucket.warehouse=${GlueCatalogId}
---conf spark.sql.catalog.s3tablesbucket.rest.sigv4-enabled=true
---conf spark.sql.catalog.s3tablesbucket.rest.signing-name=glue
---conf spark.sql.catalog.s3tablesbucket.rest.signing-region=${AWS::Region}
 ```
+
+The remaining flags enable the Iceberg Spark extensions and configure SigV4 request signing — standard
+for any AWS-hosted REST catalog. The full configuration is in the
+[state machine definition](https://github.com/jabrennem/serverless-etl-s3-tables).
 
 The `load_data.py` script intentionally does not apply business transformations to the source data. It reads the
 Parquet rows, appends them to Iceberg using Spark's DataFrameWriterV2 API, and writes a statistics file for the state
@@ -414,14 +410,15 @@ sam build
 sam deploy
 ```
 
-`sam build` packages the Lambda function and produces the transformed template used
-for deployment. This output is the first checkpoint that the application code and template built successfully.
+I run `sam build` to package the Lambda function and produce the transformed template used
+for the deployment. This output is the first checkpoint that the application code and template 
+built successfully.
 
 <figure>
   <img src="/assets/media/serverless-etl/sam_build.png" alt="Terminal output showing a successful SAM build for the ValidateInputFunction Lambda." style={{width: '100%'}} />
 </figure>
 
-After `sam deploy` completes, CloudFormation returns the stack outputs, including
+After I execute `sam deploy`, CloudFormation returns the stack outputs, including
 the name of the data bucket used by the pipeline. These outputs confirm that the stack is ready for the
 post-deployment setup.
 
@@ -438,7 +435,7 @@ Catalog access, it also applies the grants required by the EMR role.
 ./scripts/post-deploy.sh
 ```
 
-The script is idempotent, so it is safe to run after every deployment:
+The script is idempotent, so it is safe to run more than once.
 
 ```bash
 # Upload PySpark entrypoint
@@ -450,6 +447,8 @@ aws lakeformation grant-permissions \
   --principal "DataLakePrincipalIdentifier=${EMR_ROLE_ARN}" \
   --resource '{"Catalog":{"Id":"<catalog-id>"}}' \
   --permissions '["CREATE_DATABASE", "DESCRIBE"]'
+
+# ... other lakeformation permissions
 ```
 
 <figure>
@@ -601,7 +600,7 @@ This architecture is designed for infrequent, unpredictable uploads. The demo I 
 workflow, but in production, it must also handle messier cases like duplicate events, higher traffic, 
 and invalid raw data. 
 
-Maybe I'll talk about these topics in future posts:
+If I were taking this to production with higher volume or less-trusted sources, these are the first things I'd address:
   - Protect persistent data in S3 from stack deletion or replacement.
   - Prevent data duplication by tracking which S3 object versions have already been ingested.
   - Batch higher volume ingestion with an SQS queue and process multiple files in the same EMR job.
