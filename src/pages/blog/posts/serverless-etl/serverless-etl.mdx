@@ -141,9 +141,8 @@ loading the data.
 <p className="part-kicker"><span>Implementation</span></p>
 <h2 id="implementation">Part 2: Implementation</h2>
 
-Part 1 described the architecture in three layers. This section shows how I implement each layer using
-AWS SAM and application code. Security is applied within each layer rather than treated as a separate
-component. The full source code is available in the
+Part 1 described the architecture in three layers. This section I want to dive more into how I implemented 
+each layer using AWS SAM and application code. The full source code is available in the
 [GitHub repository](https://github.com/jabrennem/serverless-etl-s3-tables).
 
 <div className="architecture-layer-heading">
@@ -151,129 +150,33 @@ component. The full source code is available in the
   <h4>Storage</h4>
 </div>
 
-### Encrypting the data bucket
+### Security: encryption and access
 
-I use a customer-managed KMS key to encrypt objects in the data bucket because incoming files may contain
-sensitive data such as PII or health information. Automatic rotation manages the key lifecycle, while an
-S3 Bucket Key reduces calls to KMS and their associated cost.
+The bucket uses a customer-managed KMS key with automatic rotation for encryption at rest, giving me
+CloudTrail visibility into every decrypt call and control over the key lifecycle. Access is scoped to the
+AWS Organization rather than individual roles — new consumers onboard without policy changes, and enforces
+all traffic through HTTPS.
 
-```yaml
-EncryptionKey:
-  Type: AWS::KMS::Key
-  Properties:
-    Description: KMS key for S3 Bucket
-    EnableKeyRotation: true
-```
+### Bucket layout and lifecycle
 
-### Organizing the data bucket
+The bucket is organized into three prefixes. `feed/` is where upstream services drop Parquet files — this
+is the ingestion boundary that EventBridge watches. `emr/` holds the PySpark entrypoint, and `runs/`
+collects statistics from each execution.
 
-I use the `DataBucket` for three types of objects:
+I enable versioning with a 30-day noncurrent expiration so I can recover from accidental overwrites without
+storage growing indefinitely. The rest of the bucket configuration — access logging, public access blocks —
+lives in the [full template on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables).
 
-- `feed/` stores the incoming data feed.
-- `emr/` stores the runtime PySpark script.
-- `runs/` stores runtime statistics.
+### Iceberg destination: schema in version control
 
-The bucket publishes object events to EventBridge so the pipeline can react to `feed/` uploads. I also enable
-versioning, block public access, send access logs to a separate bucket, and expire noncurrent versions after 30 days.
-These settings provide recovery and audit trails without retaining old object versions indefinitely.
+I define the S3 Table Bucket, namespace, and table in the SAM template so the destination exists before the
+first pipeline run and the schema is reviewable in a pull request. This makes the demo simpler and keeps 
+the DDL out of Spark. In production, schema evolution belongs in Iceberg-compatible tools like Spark or 
+Athena. CloudFormation template changes force a table replacement and risks data loss.
 
 ```yaml
-DataBucket:
-  Type: AWS::S3::Bucket
-  Properties:
-    NotificationConfiguration:
-      EventBridgeConfiguration:
-        EventBridgeEnabled: true
-    BucketEncryption:
-      ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: aws:kms
-            KMSMasterKeyID: !GetAtt EncryptionKey.Arn
-          BucketKeyEnabled: true
-    VersioningConfiguration:
-      Status: Enabled
-    PublicAccessBlockConfiguration:
-      BlockPublicAcls: true
-      BlockPublicPolicy: true
-      IgnorePublicAcls: true
-      RestrictPublicBuckets: true
-    LoggingConfiguration:
-      DestinationBucketName: !Ref LoggingBucketName
-      LogFilePrefix: !Sub "${AWS::StackName}/"
-    LifecycleConfiguration:
-      Rules:
-        - Id: ExpireNonCurrentVersions
-          Status: Enabled
-          NoncurrentVersionExpiration:
-            NoncurrentDays: 30
-```
-
-The bucket policy denies requests that do not use HTTPS and grants the listed actions only to principals in the
-configured AWS Organization.
-
-```yaml
-BucketPolicy:
-  Type: AWS::S3::BucketPolicy
-  Properties:
-    Bucket: !Ref DataBucket
-    PolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-        - Sid: DenyInsecureTransport
-          Effect: Deny
-          Principal: "*"
-          Action: "s3:*"
-          Resource:
-            - !GetAtt DataBucket.Arn
-            - !Sub "${DataBucket.Arn}/*"
-          Condition:
-            Bool:
-              aws:SecureTransport: "false"
-        - Sid: AllowOrganizationAccess
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action:
-            - s3:GetObject
-            - s3:PutObject
-            - s3:DeleteObject
-            - s3:ListBucket
-            - s3:GetBucketLocation
-          Resource:
-            - !GetAtt DataBucket.Arn
-            - !Sub "${DataBucket.Arn}/*"
-          Condition:
-            StringEquals:
-              aws:PrincipalOrgID: !Ref PrincipalOrgId
-```
-
-### Defining the Iceberg destination
-
-Amazon S3 Tables organizes Iceberg resources into three levels:
-
-- Table bucket
-- Namespace
-- Table
-
-I declare all three resources in the template so the table schema is version-controlled and the destination exists
-before the first pipeline run. This keeps table-creation logic out of Spark.
-
-```yaml
-IcebergTableBucket:
-  Type: AWS::S3Tables::TableBucket
-  Properties:
-    TableBucketName: !Ref TableBucketName
-
-IcebergDefaultNamespace:
-  Type: AWS::S3Tables::Namespace
-  Properties:
-    TableBucketARN: !GetAtt IcebergTableBucket.TableBucketARN
-    Namespace: default
-
-# test table for this service with a simple schema
 IcebergTestDataTable:
   Type: AWS::S3Tables::Table
-  DependsOn: IcebergDefaultNamespace
   Properties:
     TableBucketARN: !GetAtt IcebergTableBucket.TableBucketARN
     Namespace: default
@@ -298,7 +201,7 @@ IcebergTestDataTable:
   <h4>Orchestration</h4>
 </div>
 
-### Coordinating independent loads
+### Coordinating multiple ingestions
 
 I keep the workflow logic in Step Functions instead of introducing additional Lambda functions. JSONata reshapes
 the workflow payload inside the state definition, while the `.sync` integration pattern lets Step Functions wait
@@ -358,8 +261,8 @@ FeedUploadRule:
             }
 ```
 
-I give the `EventBridgeStateMachineRole` only `states:StartExecution`, scoped to this state machine. This keeps the
-event trigger from starting other workflows.
+I give the `EventBridgeStateMachineRole` access to perform `states:StartExecution` only on this state 
+machine. This keeps the event trigger from starting other workflows.
 
 <div className="architecture-layer-heading">
   <span>03</span>
@@ -424,11 +327,10 @@ EmrApp:
       IdleTimeoutMinutes: 2
 ```
 
-The validation Lambda and EMR jobs use separate execution roles, allowing each role to be limited to the resources
-it needs. When Lake Formation governs Data Catalog access, IAM permissions alone are not enough. The EMR role also
-receives `CREATE_DATABASE` and `DESCRIBE` on the catalog; `DESCRIBE`, `ALTER`, and `CREATE_TABLE` on the `default`
-namespace; and `SELECT`, `INSERT`, `DESCRIBE`, `ALTER`, and `DROP` on its tables. I apply these grants after deployment
-because the script derives both the deployed role and the account-specific S3 Tables catalog ID.
+The validation Lambda and EMR jobs use separate execution roles scoped to their own resources. When Lake
+Formation governs the Data Catalog, IAM alone isn't enough — the EMR role also needs Lake Formation grants
+for catalog, namespace, and table-level access. I apply these after deployment via a script that derives
+the role ARN and catalog ID from the stack outputs.
 
 #### Loading Parquet into Iceberg
 
