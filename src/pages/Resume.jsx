@@ -5,10 +5,10 @@ export default function Resume() {
   return (
     <div className="resume-page">
       <div className="resume-actions no-print">
-        <button className="button primary" onClick={() => window.print()}>
+        <a className="button primary" href="/assets/Joshua-Brenneman-Resume.pdf" download>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{marginRight: '0.4rem', verticalAlign: '-0.15em'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Save as PDF
-        </button>
+          Download PDF
+        </a>
       </div>
       <header className="resume-header">
         <h1>Joshua Brenneman</h1>
