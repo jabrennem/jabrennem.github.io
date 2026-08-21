@@ -1,117 +1,117 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Joshua Brenneman - Resume</title>
-  <link rel="stylesheet" href="resume.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Joshua Brenneman — Resume</title>
+  <link rel="stylesheet" href="resume.css" />
 </head>
 <body>
-  <div class="page">
+  <main class="page">
     <header>
-      <h1>Joshua Brenneman</h1>
-      <p class="headline">Senior Software Engineer &middot; AWS Cloud &amp; Platform Engineering</p>
+      <div>
+        <h1>Joshua Brenneman</h1>
+        <div class="headline">Senior Software Engineer | Cloud, Data &amp; Platform Engineering</div>
+      </div>
       <div class="contact">
-        <a href="mailto:jbrenn.dev@gmail.com">jbrenn.dev@gmail.com</a>
-        <a href="https://github.com/jabrennem">github.com/jabrennem</a>
-        <a href="https://www.linkedin.com/in/joshuabrennemana">linkedin.com/in/joshuabrennemana</a>
+        <div>Myrtle Beach, SC (Remote)</div>
+        <div><a href="mailto:jbrenn.dev@gmail.com">jbrenn.dev@gmail.com</a></div>
+        <div><a href="https://github.com/jabrennem">github.com/jabrennem</a></div>
+        <div><a href="https://linkedin.com/in/joshuabrennemana">linkedin.com/in/joshuabrennemana</a></div>
+        <div><a href="https://jabrennem.github.io">jabrennem.github.io</a></div>
       </div>
     </header>
 
     <section>
       <h2>Summary</h2>
-      <p>
-        Senior Software Engineer with a decade of experience designing and building AWS-native platforms
-        for biomedical research, clinical genomics, data engineering, and machine learning. Skilled at
-        translating complex scientific problems into reliable, production-grade cloud systems. Background
-        in linguistics and computational analysis. AWS Certified Developer &ndash; Associate.
+      <p class="summary">
+        I design and build AWS-native platforms for biomedical research, clinical genomics, and machine
+        learning. Most of my career has been helping researchers and scientists solve complex problems
+        by turning their workflows into reliable production systems. I enjoy making good architectural
+        decisions with people and breaking down complex ideas across disciplines.
       </p>
+    </section>
+
+    <section>
+      <h2>Technical Strengths</h2>
+      <div class="skills">
+        <div><strong>Languages:</strong> Python, TypeScript, JavaScript, C++</div>
+        <div><strong>Cloud:</strong> AWS, multi-account architecture, IAM, Organizations</div>
+        <div><strong>Data:</strong> S3, Athena, Apache Iceberg, Glue, EMR, Lake Formation</div>
+        <div><strong>Compute:</strong> Lambda, Step Functions, AWS Batch, ECS, Docker</div>
+        <div><strong>Infrastructure:</strong> CDK, CloudFormation, SAM, CI/CD, GitHub Actions</div>
+        <div><strong>AI:</strong> Bedrock, SageMaker, MCP, agentic application architecture</div>
+      </div>
     </section>
 
     <section>
       <h2>Experience</h2>
 
-      <div class="role">
-        <div class="role-header">
-          <h3>Senior Software Engineer</h3>
-          <span class="date">Apr 2023 &ndash; Present</span>
+      <div class="company-row">
+        <div class="company">Nationwide Children's Hospital</div>
+        <div class="location">Columbus, OH / Remote</div>
+      </div>
+
+      <div class="role-row">
+        <div class="role">Senior Software Engineer — Cloud &amp; Data Platforms</div>
+        <div class="dates">Apr 2023 – Present</div>
+      </div>
+      <div class="team">Office of Data Sciences · Cloud Solutions Team</div>
+      <ul>
+        <li>Lead architecture for a multi-account AWS research data lakehouse using S3, Glue, Athena, Apache Iceberg, EMR Serverless, Lake Formation, Step Functions, and EventBridge.</li>
+        <li>Helped design and operate an AWS ecosystem spanning 10+ accounts and petabyte-scale research data, with centralized governance, deployment, and platform standards.</li>
+        <li>Build platform APIs and integration patterns for data producers and consumers using API Gateway, EventBridge, Lambda, and Model Context Protocol (MCP).</li>
+        <li>Partner with data scientists on large-scale NLP and analytical workloads using Iceberg-backed datasets and internal cloud data infrastructure.</li>
+        <li>Integrate generative AI into internal engineering and data tools using Amazon Bedrock and MCP-based agent architectures.</li>
+        <li>Build production CI/CD and infrastructure-as-code workflows with AWS CDK, CloudFormation, SAM, CodePipeline, CodeBuild, and GitHub Actions.</li>
+        <li>Supported migration of the data platform into a NIST-aligned environment with stronger security, governance, and operational controls.</li>
+      </ul>
+
+      <div class="earlier-role">
+        <div class="role-row">
+          <div class="role">Bioinformatics Software Developer — Research</div>
+          <div class="dates">Oct 2019 – Apr 2023</div>
         </div>
-        <p class="company">Nationwide Children's Hospital &middot; Office of Data Sciences, Cloud Solutions Team</p>
-        <ul>
-          <li>Lead architect of a multi-account research data lakehouse on AWS, managing catalog (Glue), storage (S3), ETL (Step Functions, EMR Serverless), governance (Lake Formation, IAM), and lineage (EventBridge).</li>
-          <li>Build APIs via API Gateway, EventBridge, and MCPs for data producers and consumers to integrate with the lakehouse.</li>
-          <li>Partner with data scientists on large-scale NLP applications using Apache Iceberg and in-house data lake infrastructure.</li>
-          <li>Integrate generative AI into internal tools using Amazon Bedrock and Model Context Protocol.</li>
-          <li>Worked with solutions architect to build a multi-account ecosystem using AWS Organizations with 10+ accounts encompassing petabytes of data.</li>
-          <li>Built CI/CD pipelines with AWS CodePipeline, CodeBuild, and GitHub Actions for production deployments.</li>
-          <li>Migrated the Data Lakehouse to a NIST-compliant environment.</li>
+        <div class="team">Institute for Genomic Medicine · Cloud Solutions Team</div>
+        <ul class="compact">
+          <li>Designed event-driven genomics workflows using Step Functions, Lambda, and AWS Batch for next-generation sequencing pipelines.</li>
+          <li>Built and maintained genomic data platforms using S3, Glue, Athena, EMR Serverless, and serverless web applications for scientists and research leaders.</li>
+          <li>Collaborated with bioinformatics scientists to translate research workflows into reliable, production-grade cloud systems.</li>
         </ul>
       </div>
 
-      <div class="role">
-        <div class="role-header">
-          <h3>Bioinformatics Software Developer &ndash; Research</h3>
-          <span class="date">Oct 2019 &ndash; Apr 2023</span>
+      <div class="earlier-role">
+        <div class="role-row">
+          <div class="role">Bioinformatics Software Developer — Clinical</div>
+          <div class="dates">Oct 2017 – Oct 2019</div>
         </div>
-        <p class="company">Nationwide Children's Hospital &middot; Institute for Genomic Medicine, Cloud Solutions Team</p>
-        <ul>
-          <li>Designed event-driven genomics workflows using Step Functions, Lambda, and AWS Batch to process next-generation sequencing pipelines.</li>
-          <li>Contributed to infrastructure for Rapid Genome Sequencing, a protocol serving NICU patients.</li>
-          <li>Built and maintained a genomic variant data lake using S3, Glue, Athena, and EMR Serverless.</li>
-          <li>Collaborated with bioinformatics scientists to translate research workflows into reliable, cost-effective production systems.</li>
-          <li>Built serverless web applications with React, S3/CloudFront, API Gateway, Lambda, and DynamoDB for scientists and directors.</li>
+        <div class="team">Institute for Genomic Medicine · Clinical Informatics Team</div>
+        <ul class="compact">
+          <li>Developed software supporting production clinical genomics and next-generation sequencing operations in collaboration with clinical teams.</li>
+          <li>Contributed to infrastructure supporting Rapid Genome Sequencing workflows for critically ill pediatric patients.</li>
         </ul>
       </div>
 
-      <div class="role">
-        <div class="role-header">
-          <h3>Bioinformatics Software Developer &ndash; Clinical</h3>
-          <span class="date">Oct 2017 &ndash; Oct 2019</span>
-        </div>
-        <p class="company">Nationwide Children's Hospital &middot; Institute for Genomic Medicine, Clinical Informatics Team</p>
-        <ul>
-          <li>Wrote software for production clinical genomics operations and next-generation sequencing pipelines in collaboration with clinical directors.</li>
-        </ul>
+      <div class="company-row">
+        <div class="company">CGI</div>
+        <div class="location">Consulting engagement with PNC Bank</div>
       </div>
-
-      <div class="role">
-        <div class="role-header">
-          <h3>Big Data Application Developer</h3>
-          <span class="date">Jun 2016 &ndash; Oct 2017</span>
-        </div>
-        <p class="company">CGI &middot; Consulting engagement with PNC Bank</p>
-        <ul>
-          <li>Maintained and developed ETL pipelines in an on-premise Hadoop and Apache Spark ecosystem.</li>
-        </ul>
+      <div class="role-row">
+        <div class="role">Big Data Application Developer</div>
+        <div class="dates">Jun 2016 – Oct 2017</div>
       </div>
+      <ul class="compact">
+        <li>Developed and maintained ETL pipelines in an on-premises Hadoop and Apache Spark ecosystem.</li>
+      </ul>
     </section>
 
     <section>
-      <h2>Capabilities</h2>
-      <div class="capabilities">
-        <div class="cap"><strong>Platform Engineering:</strong> AWS architecture, serverless systems, distributed workflows, event-driven architecture, developer enablement.</div>
-        <div class="cap"><strong>Cloud &amp; Data:</strong> S3, Athena, Apache Iceberg, Glue, EMR, ETL, lakehouse architecture.</div>
-        <div class="cap"><strong>Compute &amp; Containers:</strong> Lambda, AWS Batch, Docker, production orchestration.</div>
-        <div class="cap"><strong>Infrastructure &amp; Delivery:</strong> CDK, CloudFormation, SAM, GitHub Actions, CodePipeline, CI/CD.</div>
-        <div class="cap"><strong>Software Engineering:</strong> Python, TypeScript, JavaScript for application architecture and product development.</div>
-        <div class="cap"><strong>AI Platforms:</strong> SageMaker, Bedrock, agentic architecture, MCP, AI-assisted engineering.</div>
+      <h2>Education &amp; Certification</h2>
+      <div class="education-row">
+        <div><span class="degree">B.A. Linguistics</span> <span class="subtle">· Minor in Computer Science</span></div>
+        <div class="subtle">AWS Certified Developer – Associate</div>
       </div>
     </section>
-
-    <footer>
-      <div class="footer-col">
-        <h2>Education</h2>
-        <p>B.A. Linguistics, Minor in Computer Science</p>
-      </div>
-      <div class="footer-col">
-        <h2>Certification</h2>
-        <p>AWS Certified Developer &ndash; Associate</p>
-      </div>
-      <div class="footer-col">
-        <h2>Languages</h2>
-        <p>German, Italian</p>
-      </div>
-    </footer>
-  </div>
+  </main>
 </body>
 </html>

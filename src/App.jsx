@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import About from './pages/About';
-import Resume from './pages/Resume';
 // import Music from './pages/Music';
 import Blog from './pages/blog/Blog';
 import BlogPost from './pages/blog/BlogPost';
@@ -29,7 +28,6 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<About />} />
-          <Route path="resume" element={<Resume />} />
           {/* <Route path="music" element={<Music />} /> */}
           <Route path="blog" element={<Blog />} />
           <Route path="blog/:slug" element={<BlogPost />} />
