@@ -164,8 +164,8 @@ is the ingestion boundary that EventBridge watches. `emr/` holds the PySpark ent
 collects statistics from each execution.
 
 I enable versioning with a 30-day noncurrent expiration so I can recover from accidental overwrites without
-storage growing indefinitely. The rest of the bucket configuration — access logging, public access blocks —
-lives in the [full template on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables).
+storage growing indefinitely. The rest of the bucket configuration like access logging, public access 
+blocks, etc. lives in the [full template on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables).
 
 ### Iceberg destination: schema in version control
 
@@ -347,7 +347,7 @@ for any AWS-hosted REST catalog. The full configuration is in the
 
 The `load_data.py` script intentionally does not apply business transformations to the source data. It reads the
 Parquet rows, appends them to Iceberg using Spark's DataFrameWriterV2 API, and writes a statistics file for the state
-machine. I keep the catalog configuration in `SparkSubmitParameters` so the script remains portable.
+machine. I keep the catalog configuration in `SparkSubmitParameters` so the script remains simple.
 
 ```python
 def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
@@ -415,7 +415,11 @@ for the deployment. This output is the first checkpoint that the application cod
 built successfully.
 
 <figure>
-  <img src="/assets/media/serverless-etl/sam_build.png" alt="Terminal output showing a successful SAM build for the ValidateInputFunction Lambda." style={{width: '100%'}} />
+  <img
+    src="/assets/media/serverless-etl/sam_build.png"
+    alt="SAM build output"
+    style={{width: '100%'}}
+  />
 </figure>
 
 After I execute `sam deploy`, CloudFormation returns the stack outputs, including
@@ -423,7 +427,11 @@ the name of the data bucket used by the pipeline. These outputs confirm that the
 post-deployment setup.
 
 <figure>
-  <img src="/assets/media/serverless-etl/sam_deploy.png" alt="Terminal output showing a successful SAM deployment and the deployed stack's DataBucketName output." style={{width: '100%'}} />
+  <img
+    src="/assets/media/serverless-etl/sam_deploy.png"
+    alt="SAM deploy output"
+    style={{width: '100%'}}
+  />
 </figure>
 
 ### Complete the post-deployment setup
@@ -452,7 +460,11 @@ aws lakeformation grant-permissions \
 ```
 
 <figure>
-  <img src="/assets/media/serverless-etl/post_deploy.png" alt="Terminal output showing a successful post-deploy script run — uploading the PySpark script and applying Lake Formation grants." style={{width: '100%'}} />
+  <img
+    src="/assets/media/serverless-etl/post_deploy.png"
+    alt="Post-deploy script output"
+    style={{width: '100%'}}
+  />
 </figure>
 
 If the account uses IAM-only access control for the Data Catalog, only the PySpark upload is required and the Lake
@@ -465,8 +477,8 @@ Formation grant commands can be omitted.
 
 ### Prepare the test file
 
-The test file is a minimal 3-row Parquet file (1.3 KB) with the same schema as the
-Iceberg table declared in the SAM template:
+The test file I'll use to trigger the pipeline is a minimal 3-row Parquet file (1.3 KB) with the 
+same schema as the Iceberg table declared in the SAM template:
 
 <table>
   <thead>
@@ -488,18 +500,23 @@ the EventBridge rule and starts the state machine.
 
 ```bash
 ./scripts/trigger.sh test-data.parquet
-# → Uploading test-data.parquet to s3://<bucket>/feed/...
-# → Pipeline triggered. Monitor execution in the Step Functions console.
+# Bash output
+# Uploading test-data.parquet to s3://<bucket>/feed/...
+# Pipeline triggered. Monitor execution in the Step Functions console.
 ```
 
 <figure>
-  <img src="/assets/media/serverless-etl/trigger_sh.png" alt="Terminal output showing trigger.sh uploading a parquet file to the feed/ prefix and confirming the pipeline was triggered." style={{width: '100%'}} />
+  <img
+    src="/assets/media/serverless-etl/trigger_sh.png"
+    alt="Running trigger.sh"
+    style={{width: '100%'}}
+  />
 </figure>
 
 ### Follow the execution
 
-The EventBridge `InputTransformer` constructs the following state machine input from the S3 event. The source key in
-this payload is the checkpoint that the object-created event crossed the ingestion boundary.
+The EventBridge `InputTransformer` constructs the following state machine input from the S3 event 
+that I triggered.
 
 ```json
 {
@@ -514,11 +531,15 @@ this payload is the checkpoint that the object-created event crossed the ingesti
 }
 ```
 
-As the workflow runs through each step, you can see successful states as green. The
-image below is what a successful execution looks like.
+As the workflow runs through each step, I see successful states as green. The
+image below is what the successful execution looks like.
 
 <figure>
-  <img src="/assets/media/serverless-etl/state-machine-succeeded.png" alt="Step Functions Graph view showing a succeeded execution — Validate Input, Load Tables map with Load Data, Get Stats Object, Emit Job Complete, Item Succeeded, then Check Table Results routing to Succeed." style={{maxWidth: '480px', width: '100%'}} />
+  <img 
+    src="/assets/media/serverless-etl/state-machine-succeeded.png"
+    alt="Succeeded state machine execution"
+    style={{maxWidth: '360px', width: '100%'}}
+  />
 </figure>
 
 ### Verify the Iceberg table
@@ -528,7 +549,11 @@ the rows written by the pipeline. The preview confirms that all three records fr
 Iceberg table.
 
 <figure>
-  <img src="/assets/media/serverless-etl/table_bucket_preview_data.png" alt="S3 Tables preview showing three test_data rows: Alice with 100.5, Bob with 200.75, and Charlie with 350." style={{width: '100%'}} />
+  <img 
+    src="/assets/media/serverless-etl/table_bucket_preview_data.png" 
+    alt="S3 Tables data preview"
+    style={{width: '100%'}} 
+  />
 </figure>
 
 <div className="architecture-layer-heading">
@@ -608,8 +633,8 @@ If I were taking this to production with higher volume or less-trusted sources, 
 
 ## Summary
 
-Hope you enjoyed walking through this solution with me. This project demonstrates an event-driven pipeline that 
-loads Parquet files from S3 into Iceberg using EventBridge, Step Functions, and EMR Serverless. I deployed it 
+Hope you enjoyed walking through this small project with me. It demonstrates an event-driven pipeline that 
+loads parquet files from S3 into Iceberg using EventBridge, Step Functions, and EMR Serverless. I deployed it 
 with AWS SAM and verified with a test run that cost roughly 2 cents. The design fits low-volume workloads and includes
 future direction for production.
 

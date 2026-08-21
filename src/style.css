@@ -211,7 +211,8 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
   .page-intro { padding: 3.5rem 0 2.75rem; }
   .blog-article pre { padding: 0.75rem 0.5rem; }
   .blog-article figure:not([data-rehype-pretty-code-figure]) { margin-left: -0.5rem; margin-right: -0.5rem; }
-  .blog-article figure:not([data-rehype-pretty-code-figure]) > img { display: block; max-width: none !important; width: 100%; }
+  .blog-article figure:not([data-rehype-pretty-code-figure]) > img { display: block; width: 100%; }
+  .blog-article figure:not([data-rehype-pretty-code-figure]) > img[style*="max-width"] { width: auto; max-width: 100%; }
   .site-footer { flex-direction: column; gap: 0.45rem; }
 }
 
