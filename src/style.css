@@ -217,4 +217,65 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-@media print { .site-header, .site-footer, .actions, .skip-link { display: none; } .site-shell { max-width: none; padding: 0; } body { background: #fff; color: #111; } .section, .capability-grid, .project-card, .callout, .empty-state { border-color: #aaa; } .capability-grid article, .project-card, .callout, .empty-state { background: #fff; } }
+/* Resume page */
+.resume-page { max-width: 900px; padding: 4rem 0 2rem; }
+.resume-header { border-bottom: 2px solid var(--accent); margin-bottom: 2rem; padding-bottom: 1.5rem; }
+.resume-header h1 { font-size: clamp(2.2rem, 5vw, 3.5rem); margin-bottom: 0.5rem; }
+.resume-contact { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.5rem; }
+.resume-contact a { color: var(--accent-strong); text-decoration: none; }
+.resume-contact a:hover { color: #fff; text-decoration: underline; }
+.resume-sep { color: var(--subtle); margin: 0 0.5rem; }
+.resume-headline { color: var(--muted); font-size: 1rem; margin: 0; }
+.resume-section { margin-bottom: 2rem; }
+.resume-section h2 { border-bottom: 1px solid var(--border); color: var(--accent); font-size: 0.8rem; font-weight: 750; letter-spacing: 0.12em; margin-bottom: 1rem; padding-bottom: 0.5rem; text-transform: uppercase; }
+.resume-section > p { color: var(--muted); max-width: 800px; }
+.resume-role { margin-bottom: 1.75rem; }
+.resume-role:last-child { margin-bottom: 0; }
+.resume-role-header { align-items: baseline; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; justify-content: space-between; }
+.resume-role-header h3 { font-size: 1.05rem; margin: 0; }
+.resume-date { color: var(--muted); font-size: 0.88rem; white-space: nowrap; }
+.resume-company { color: var(--muted); font-size: 0.9rem; margin: 0.2rem 0 0.6rem; }
+.resume-role ul { color: var(--muted); font-size: 0.92rem; margin: 0; max-width: 800px; padding-left: 1.2rem; }
+.resume-role li + li { margin-top: 0.35rem; }
+.resume-capabilities { display: grid; gap: 0.5rem; }
+.resume-capability { color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+.resume-capability strong { color: var(--text); }
+.resume-footer-section { margin-bottom: 0; }
+.resume-columns { display: grid; gap: 2rem; grid-template-columns: repeat(3, 1fr); }
+.resume-columns h2 { border: none; margin-bottom: 0.5rem; padding-bottom: 0; }
+.resume-columns p { color: var(--muted); font-size: 0.92rem; margin: 0; }
+.resume-actions { display: flex; justify-content: flex-end; margin-bottom: 1.5rem; }
+
+@media (max-width: 900px) {
+  .resume-page { padding: 2.5rem 0 1.5rem; }
+  .resume-columns { grid-template-columns: 1fr; gap: 1.25rem; }
+}
+
+@media print {
+  .site-header, .site-footer, .actions, .skip-link, .no-print { display: none !important; }
+  .site-shell { max-width: none; padding: 0; }
+  body { background: #fff; color: #111; font-size: 11pt; line-height: 1.4; }
+  a { color: #111; text-decoration: none; }
+  .section, .capability-grid, .project-card, .callout, .empty-state { border-color: #aaa; }
+  .capability-grid article, .project-card, .callout, .empty-state { background: #fff; }
+  /* Resume print overrides */
+  .resume-page { padding: 0; }
+  .resume-header { border-bottom: 2px solid #333; padding-bottom: 0.75rem; margin-bottom: 1rem; }
+  .resume-header h1 { font-size: 22pt; margin-bottom: 0.25rem; }
+  .resume-contact { color: #444; }
+  .resume-contact a { color: #444; }
+  .resume-sep { color: #666; }
+  .resume-headline { color: #444; }
+  .resume-section { margin-bottom: 1rem; }
+  .resume-section h2 { border-bottom: 1px solid #ccc; color: #333; font-size: 9pt; margin-bottom: 0.5rem; padding-bottom: 0.25rem; }
+  .resume-section > p { color: #333; }
+  .resume-role { margin-bottom: 0.75rem; }
+  .resume-role-header h3 { font-size: 10.5pt; }
+  .resume-date { color: #555; }
+  .resume-company { color: #555; font-size: 9.5pt; }
+  .resume-role ul { color: #333; font-size: 9.5pt; }
+  .resume-capability { color: #333; font-size: 9.5pt; }
+  .resume-capability strong { color: #111; }
+  .resume-columns p { color: #333; }
+  .resume-actions { display: none; }
+}

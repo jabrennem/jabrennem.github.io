@@ -51,10 +51,10 @@ tradeoffs, and the improvements I would make next.
 
 Consider an upstream service that produces Parquet files and uploads them to S3. An analytics team needs 
 the data ingested into managed Apache Iceberg tables in our data catalog in a timely manner. Uploads are infrequent 
-and unpredictable, so the workload does not justify running resources.
+and unpredictable, so the workload does not justify persistent resources.
 
 That leaves three requirements for the pipeline. It should start processing when a file arrives, scale 
-back down after the work finishes, and expose enough execution history to trace failures.
+back down after it finishes, and log enough execution history to trace failures.
 
 <div className="design-principles" aria-label="Pipeline requirements">
   <div>
@@ -325,14 +325,14 @@ EmrApp:
       IdleTimeoutMinutes: 2
 ```
 
-The validation Lambda and EMR jobs use separate execution roles scoped to their own resources. When Lake
-Formation governs the Data Catalog, IAM alone isn't enough — the EMR role also needs Lake Formation grants
-for catalog, namespace, and table-level access. I apply these after deployment via a script that derives
-the role ARN and catalog ID from the stack outputs.
+The validation Lambda and EMR jobs use separate roles scoped to their own resources. When Lake
+Formation governs the Data Catalog, the EMR role will need Lake Formation grants
+for catalog, namespace, and table-level access in addition to IAM. I apply these after deployment 
+via a script that derives the role ARN and catalog ID from the stack outputs.
 
 #### Loading Parquet into Iceberg
 
-The Spark submission parameters point the `s3tablesbucket` catalog at Glue's Iceberg REST endpoint with SigV4 signing:
+The Spark submission parameters register an s3tablesbucket catalog backed by Glue's Iceberg REST endpoint:
 
 ```bash
 --conf spark.sql.catalog.s3tablesbucket=org.apache.iceberg.spark.SparkCatalog
@@ -341,13 +341,12 @@ The Spark submission parameters point the `s3tablesbucket` catalog at Glue's Ice
 --conf spark.sql.catalog.s3tablesbucket.warehouse=${GlueCatalogId}
 ```
 
-The remaining flags enable the Iceberg Spark extensions and configure SigV4 request signing — standard
-for any AWS-hosted REST catalog. The full configuration is in the
-[state machine definition](https://github.com/jabrennem/serverless-etl-s3-tables).
+The full configuration is in the [state machine definition](https://github.com/jabrennem/serverless-etl-s3-tables).
 
-The `load_data.py` script intentionally does not apply business transformations to the source data. It reads the
-Parquet rows, appends them to Iceberg using Spark's DataFrameWriterV2 API, and writes a statistics file for the state
-machine. I keep the catalog configuration in `SparkSubmitParameters` so the script remains simple.
+The `load_data.py` script intentionally does not apply business transformations to the source data, but this
+is an appropriate place to add, drop, or normalize columns. As of right now, it just reads the
+Parquet rows, appends them to Iceberg, and writes a statistics file for the state machine. I keep 
+the catalog configuration in `SparkSubmitParameters` so the script remains simple.
 
 ```python
 def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
