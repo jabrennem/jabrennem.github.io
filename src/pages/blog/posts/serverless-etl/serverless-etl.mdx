@@ -2,14 +2,13 @@
 slug: serverless-etl
 status: "Series 01 · Serverless ETL"
 featured: true
-title: Building an Event-Driven Parquet-to-Iceberg Pipeline with Amazon S3 Tables
-description: "The initial architecture: prefix-scoped S3 events, EventBridge routing, Step Functions orchestration, and EMR Serverless execution."
-keywords: "AWS SAM · S3 · EventBridge · Step Functions · EMR Serverless · Apache Iceberg · Lakehouse"
-search: serverless etl s3 eventbridge step functions emr serverless apache iceberg data lake lakehouse athena ingestion
+title: A Cost-Aware Serverless Pipeline for Batching Parquet into Apache Iceberg
+description: "A daily batch of small Parquet files (plus the occasional huge one) lands in S3 Tables via a scheduled drain, size-based bin-packing, and one EMR Serverless job per group."
+keywords: "AWS SAM · S3 · SQS · EventBridge Scheduler · Step Functions · EMR Serverless · Apache Iceberg · Lakehouse"
+search: serverless etl s3 sqs eventbridge scheduler step functions emr serverless apache iceberg data lake lakehouse batching bin-pack ingestion
 repoUrl: https://github.com/jabrennem/serverless-etl-s3-tables
 outline:
   - Problem and solution
-  - Implementation
   - Demo and Results
   - Tradeoffs and next steps
 ---
@@ -22,13 +21,16 @@ import { Link } from 'react-router-dom';
 
 export const Thumbnail = () => <ArchitectureDiagram thumbnail />;
 
-This project shows how I approach a data engineering architecture. It addresses a common challenge of 
-reliably ingesting Parquet files from S3 into queryable Apache Iceberg tables without keeping compute 
-resources running between workloads.
+This project shows how I approach a data engineering architecture for a real, slightly awkward
+workload: an external team drops a batch of small Parquet files with hundreds to thousands of rows into S3 every 
+day. Every so often the files are very large with hundreds of millions of rows. I need to load the files into
+Apache Iceberg tables without keeping compute running between uploads — and without spinning up more jobs 
+(or more cost) than the batch actually warrants.
 
-I start with the requirements, explain how they shaped the storage, orchestration, and compute layers, 
-and then walk through the AWS SAM implementation. I finish with a cost analysis, current 
-tradeoffs, and the improvements I would make next.
+I start with the requirements, explain how they shaped the storage, orchestration, and compute layers — and the
+reasoning behind each decision — with a short note on how it's built. Then I run it end to end, look at whether
+the batching actually saved money, and finish with the current tradeoffs and the improvement I'd reach for next
+if the volume grew.
 
 [View the repository on GitHub →](https://github.com/jabrennem/serverless-etl-s3-tables)
 
@@ -36,7 +38,6 @@ tradeoffs, and the improvements I would make next.
   <p className="eyebrow">On this page</p>
   <ol>
     <li><Link to="#problem-and-solution">Problem and solution</Link></li>
-    <li><Link to="#implementation">Implementation</Link></li>
     <li><Link to="#demo-and-results">Demo and Results</Link></li>
     <li><Link to="#tradeoffs-and-next-steps">Tradeoffs and next steps</Link></li>
   </ol>
@@ -49,28 +50,35 @@ tradeoffs, and the improvements I would make next.
 
 ### The problem
 
-Consider an upstream service that produces Parquet files and uploads them to S3. An analytics team needs 
-the data ingested into managed Apache Iceberg tables in our data catalog in a timely manner. Uploads are infrequent 
-and unpredictable, so the workload does not justify persistent resources.
+An external team uploads a batch of Parquet files to S3 most days — roughly 8 to 10 at a time, a few hundred
+records each. They usually arrive together, but can also be delayed by hours. Each file is destined for one of a
+couple of Iceberg tables in our catalog. Every once in a while that same team sends a much larger file, with
+hundreds of millions of records.
 
-That leaves three requirements for the pipeline. It should start processing when a file arrives, scale 
-back down after it finishes, and log enough execution history to trace failures.
+I'm on a small team, so the design has to require the least amount of resource management possible: when
+something goes wrong I want to diagnose it and get the data ingested again as quickly as possible. Cost is a
+priority too — the files are usually small, so I don't want to pay for a heavyweight job (or several) to move a
+few kilobytes.
+
+That shapes four requirements. The pipeline should consolidate a day's uploads into one run instead of reacting
+to each file, scale to zero between batches, spend compute in proportion to the data, and log enough history to
+trace a failure and safely re-run it.
 
 <div className="design-principles" aria-label="Pipeline requirements">
   <div>
     <p className="design-principle-number">01</p>
-    <h4>Timely</h4>
-    <p>Start processing as soon as a file arrives.</p>
+    <h4>Batch-aware</h4>
+    <p>Consolidate a window of uploads into one run, not one per file.</p>
   </div>
   <div>
     <p className="design-principle-number">02</p>
     <h4>Cost-effective</h4>
-    <p>Avoid running compute between infrequent uploads.</p>
+    <p>Scale to zero between batches; spend compute in proportion to the data.</p>
   </div>
   <div>
     <p className="design-principle-number">03</p>
     <h4>Observable</h4>
-    <p>Make each execution and failure easy to trace.</p>
+    <p>Make each execution and failure easy to trace and safe to re-run.</p>
   </div>
 </div>
 ### The solution
@@ -87,11 +95,11 @@ independently:
   <h4>Storage</h4>
 </div>
 
-This architecture separates storage locations for the incoming data feed and the Iceberg table data referenced 
-by downstream services and analytics teams. I store the source data in a general S3 bucket and use S3 Table Buckets 
-for the AWS managed Iceberg tables. This allows for a clear separation between raw data and the catalog table 
-data. Incoming files are uploaded under the feed/ prefix, giving the pipeline a clear boundary for identifying 
-new data to ingest.
+This architecture separates storage for the incoming data feed and the Iceberg table data referenced by
+downstream services and analytics teams. I store the source data in a general S3 bucket and use an S3 Table
+Bucket for the AWS-managed Iceberg tables — a clear boundary between raw data and catalog data. Incoming files
+land under the `feed/` prefix, which gives the pipeline a single place to watch, and each file resolves by name
+to one of two Iceberg tables (`test_data` and `customers`).
 
 <StorageDiagram />
 
@@ -100,11 +108,16 @@ new data to ingest.
   <h4>Orchestration</h4>
 </div>
 
-The orchestration layer is responsible for coordinating the ingestion process. The first step is to detect when new 
-`feed/` objects are created. I configure the S3 bucket to send events to EventBridge. EventBridge rules can filter 
-for events with the `feed/` prefix and then trigger a Step Functions state machine. Step Functions provides a visual 
-execution history, built-in error handling, and support to run parallel tasks. Both EventBridge and Step Functions are
-managed behind the scenes, so the entire orchestration layer is serverless and scales automatically.
+The orchestration layer decides *when* to run and consolidates a window of uploads into a single execution.
+The obstacle is that reacting to each S3 event — with an EventBridge target, a Pipe, or an SQS-to-Lambda
+source — fans a batch of files out into several executions, because those integrations poll in parallel and
+flush eagerly. That would defeat the whole point of batching. So I decouple arrival from processing: S3 sends
+`Object Created` events for the `feed/` prefix to EventBridge, which drops them into an SQS queue that simply
+buffers the day's uploads. On a timer, EventBridge Scheduler invokes a Message Poller Lambda that drains the
+queue and, if anything is waiting, starts exactly one Step Functions execution with the whole file list. A
+timer is the one trigger that deterministically turns a window of arrivals into a single run. Step Functions
+then gives me a visual execution history, built-in error handling, and parallel task support — and every piece
+here is managed, so the layer scales itself.
 
 <OrchestrationDiagram />
 
@@ -113,275 +126,50 @@ managed behind the scenes, so the entire orchestration layer is serverless and s
   <h4>Compute</h4>
 </div>
 
-The compute layer loads the incoming Parquet data into Iceberg. Each accepted Parquet file is treated as an additive
-batch. The job reads its rows without applying business transformations and appends them to the target table. I use
-Spark on EMR Serverless because it gives me control over the Spark configuration
-without keeping a cluster running between jobs. The Amazon S3 Tables integration exposes the table bucket through Glue's 
-federated `s3tablescatalog`, allowing Spark to read from and write to the Iceberg tables.
+The compute layer loads the batch into Iceberg while spending as little on EMR as the data allows. EMR
+Serverless is the expensive part, and it charges a per-job floor whether a job moves a few kilobytes or
+gigabytes. So the real decision is *how to pack files into jobs*.
 
-There is an opportunity for collecting runtime statistics that downstream services can use for notifications or 
-anomaly detection. The job writes these statistics as JSON under `runs/<execution-id>/stats/` in the source S3 
-bucket. Using the execution ID connects the output to a specific Step Functions execution.
+A Lambda runs first: it validates the payload, resolves each file to its table by filename, and bin-packs by
+size. Every file over a threshold gets its own job; all the small files share one. A Step Functions Map state
+then runs one EMR Serverless Spark job per group — and a single job can write to several tables at once.
 
-Before starting EMR Serverless, I use a Lambda function to validate the EventBridge payload and map each source file to an 
-Iceberg table. This allows malformed or unmapped input to fail quickly and cheaply while keeping the Spark job focused on 
-loading the data.
+Loads are idempotent by design. Each row carries its source S3 URI in a `source_file` column, and before
+appending a file the job checks whether that URI is already in the table — so re-running a failed execution
+never double-loads. (I first tried `MERGE`, but it hit a Lake Formation 403 on S3 Tables; a plain
+check-then-append uses only the operations that work.)
+
+If any group fails, a Choice state fails the whole execution — keeping the completed loads and surfacing the
+failure in the console. Each job also drops a per-group stats JSON under `runs/<execution-id>/stats/` for
+downstream use, so nobody has to parse Spark logs.
 
 <ComputeDiagram />
 
+### How it's built
+
+The whole thing is one AWS SAM application — an S3 bucket, an SQS queue, an EventBridge rule and Scheduler, two
+small Lambdas (the Message Poller and the Validate/bin-pack function), a Step Functions state machine, an EMR
+Serverless Spark application, and an S3 Table Bucket with the two Iceberg tables (`test_data` and `customers`).
+Keeping it in one template means the destinations and their schema exist before the first run and every change is
+reviewable in a pull request. I'm not walking through the YAML here — it drifts, and the diagrams above already
+show how the pieces fit — so the [full source is on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables)
+if you want to read it.
+
 <aside className="next-steps-callout" id="whats-next">
   <p className="eyebrow">Up next</p>
-  <p>Now that we have a clear understanding of the problem and the solution, we can dive into the source code and see how the architecture is implemented.</p>
+  <p>With the problem and the design in place, let's run it end to end — upload a batch, watch it fan out, and check whether the grouping actually saved on EMR.</p>
 </aside>
 
 ---
 
 <br/>
 
-<p className="part-kicker"><span>Implementation</span></p>
-<h2 id="implementation">Part 2: Implementation</h2>
+<h2 id="demo-and-results">Part 2: Demo and Results</h2>
 
-Part 1 described the architecture in three layers. This section I want to dive more into how I implemented 
-each layer using AWS SAM and Python. The full source code is available in the
-[GitHub repository](https://github.com/jabrennem/serverless-etl-s3-tables).
-
-<div className="architecture-layer-heading">
-  <span>01</span>
-  <h4>Storage</h4>
-</div>
-
-### Security: encryption and access
-
-The bucket uses a customer-managed KMS key with automatic rotation for encryption at rest, giving me
-CloudTrail visibility into every decrypt call and control over the key lifecycle. Access is scoped to the
-AWS Organization rather than individual roles — new consumers onboard without policy changes, and enforces
-all traffic through HTTPS.
-
-### Bucket layout and lifecycle
-
-The bucket is organized into three prefixes. `feed/` is where upstream services drop Parquet files — this
-is the ingestion boundary that EventBridge watches. `emr/` holds the PySpark entrypoint, and `runs/`
-collects statistics from each execution.
-
-I enable versioning with a 30-day noncurrent expiration so I can recover from accidental overwrites without
-storage growing indefinitely. The rest of the bucket configuration like access logging, public access 
-blocks, etc. lives in the [full template on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables).
-
-### Iceberg destination: schema in version control
-
-I define the S3 Table Bucket, namespace, and table in the SAM template so the destination exists before the
-first pipeline run and the schema is reviewable in a pull request. This makes the demo simpler and keeps 
-the DDL out of Spark. In production, schema evolution belongs in Iceberg-compatible tools like Spark or 
-Athena. CloudFormation template changes force a table replacement and risks data loss.
-
-```yaml
-IcebergTestDataTable:
-  Type: AWS::S3Tables::Table
-  Properties:
-    TableBucketARN: !GetAtt IcebergTableBucket.TableBucketARN
-    Namespace: default
-    TableName: test_data
-    OpenTableFormat: ICEBERG
-    IcebergMetadata:
-      IcebergSchema:
-        SchemaFieldList:
-          - Name: id
-            Type: long
-            Required: true
-          - Name: name
-            Type: string
-            Required: false
-          - Name: amount
-            Type: double
-            Required: false
-```
-
-<div className="architecture-layer-heading">
-  <span>02</span>
-  <h4>Orchestration</h4>
-</div>
-
-### Coordinating multiple ingestions
-
-I keep the workflow logic in Step Functions rather than adding more Lambda functions. A Map state gives
-each input file its own load path — if one file fails, the rest still complete. Each iteration starts the
-EMR job synchronously and passes it the source object, target table, and a location for writing execution
-statistics. Inside the state definitions, JSONata handles payload reshaping and the `.sync` integration
-pattern blocks until each EMR job finishes.
-
-After the Map completes, a Choice state counts failed items. If any item has `status: "failed"`, the overall
-execution fails. This preserves the completed loads while making partial failure visible in the Step Functions
-console.
-
-```json
-"Check Table Results": {
-  "Type": "Choice",
-  "Choices": [{
-    "Condition": "{% $count($states.input[status = 'failed']) > 0 %}",
-    "Next": "Fail"
-  }],
-  "Default": "Succeed"
-}
-```
-
-### Starting the workflow from S3
-
-An EventBridge rule filters S3 `Object Created` events for keys under the `feed/` prefix and starts the state
-machine. Its `InputTransformer` extracts the S3 key and shapes the input expected by the `ValidateInputFunction`.
-
-```yaml
-FeedUploadRule:
-  Type: AWS::Events::Rule
-  Properties:
-    EventPattern:
-      source:
-        - aws.s3
-      detail-type:
-        - Object Created
-      detail:
-        bucket:
-          name:
-            - !Ref DataBucket
-        object:
-          key:
-            - prefix: "feed/"
-    Targets:
-      - Id: LoadDataStateMachine
-        Arn: !GetAtt StateMachine.Arn
-        RoleArn: !GetAtt EventBridgeStateMachineRole.Arn
-        InputTransformer:
-          InputPathsMap:
-            key: $.detail.object.key
-          InputTemplate: |
-            {
-              "SourceFileTableNameMapping": [{"SourceFile": "<key>"}],
-              "Event": {"source": "aws.s3", "detail-type": "Object Created", "key": "<key>"}
-            }
-```
-
-I give the `EventBridgeStateMachineRole` access to perform `states:StartExecution` only on this state 
-machine. This keeps the event trigger from starting other workflows.
-
-<div className="architecture-layer-heading">
-  <span>03</span>
-  <h4>Compute</h4>
-</div>
-
-### Validate input before EMR starts
-
-I use a sub-second Lambda to validate the input before starting EMR Serverless. It checks the EventBridge payload
-against a JSON Schema and maps each source file to an Iceberg table using regex patterns from `file_mapping.json`.
-
-```yaml
-ValidateInputFunction:
-  Type: AWS::Serverless::Function
-  Properties:
-    Handler: validate_input.handler
-    CodeUri: lambda/validate_input/
-```
-
-```python
-@logger.inject_lambda_context
-def handler(event, context):
-    validate(event=event, schema=INPUT_SCHEMA)
-
-    for mapping in event["SourceFileTableNameMapping"]:
-        if "TableName" not in mapping:
-            table_name = resolve_table_name(
-                mapping["SourceFile"], FILE_PATTERN_MAPPINGS
-            )
-            mapping["TableName"] = table_name
-
-    return event
-```
-
-Table resolution checks patterns from longest to shortest so more specific matches take precedence. Adding an
-ingestion target requires a new entry in `file_mapping.json` and a corresponding table resource in the SAM template.
-
-```json
-{
-  "mappings": [
-    {"tableName": "test_data", "filePattern": ".*/test-data\\.parquet$"}
-  ]
-}
-```
-
-### Scaling compute to zero
-
-I configure an ARM64 Spark application on EMR release 7.8.0. Auto-start launches the application when a job arrives,
-and a two-minute idle timeout stops it afterward. This leaves no EMR compute running between loads.
-
-```yaml
-EmrApp:
-  Type: AWS::EMRServerless::Application
-  Properties:
-    ReleaseLabel: emr-7.8.0
-    Architecture: ARM64
-    Type: Spark
-    AutoStartConfiguration:
-      Enabled: true
-    AutoStopConfiguration:
-      Enabled: true
-      IdleTimeoutMinutes: 2
-```
-
-The validation Lambda and EMR jobs use separate roles scoped to their own resources. When Lake
-Formation governs the Data Catalog, the EMR role will need Lake Formation grants
-for catalog, namespace, and table-level access in addition to IAM. I apply these after deployment 
-via a script that derives the role ARN and catalog ID from the stack outputs.
-
-#### Loading Parquet into Iceberg
-
-The Spark submission parameters register an s3tablesbucket catalog backed by Glue's Iceberg REST endpoint:
-
-```bash
---conf spark.sql.catalog.s3tablesbucket=org.apache.iceberg.spark.SparkCatalog
---conf spark.sql.catalog.s3tablesbucket.type=rest
---conf spark.sql.catalog.s3tablesbucket.uri=https://glue.${AWS::Region}.amazonaws.com/iceberg
---conf spark.sql.catalog.s3tablesbucket.warehouse=${GlueCatalogId}
-```
-
-The full configuration is in the [state machine definition](https://github.com/jabrennem/serverless-etl-s3-tables).
-
-The `load_data.py` script intentionally does not apply business transformations to the source data, but this
-is an appropriate place to add, drop, or normalize columns. As of right now, it just reads the
-Parquet rows, appends them to Iceberg, and writes a statistics file for the state machine. I keep 
-the catalog configuration in `SparkSubmitParameters` so the script remains simple.
-
-```python
-def main(input_path, catalog_id, namespace, table_name, stats_s3_uri=""):
-    iceberg_table = f"s3tablesbucket.{namespace}.{table_name}"
-
-    spark = (
-        SparkSession.builder
-        .appName(f"S3TableBucket-Import-{table_name}")
-        .getOrCreate()
-    )
-
-    df = spark.read.parquet(input_path)
-    count = df.count()
-
-    df.writeTo(iceberg_table).append()
-
-    if stats_s3_uri:
-        _write_stats_file(stats_s3_uri, input_path, catalog_id, namespace,
-                          table_name, count)
-    spark.stop()
-    return 0
-```
-
-The state machine reads the file written to `runs/<execution-id>/stats/<table>.json`, allowing structured metadata
-to flow downstream without parsing Spark logs.
-
----
-
-<br/>
-
-<h2 id="demo-and-results">Part 3: Demo and Results</h2>
-
-To test the architecture, I deploy the stack and upload a three-row Parquet file to the `feed/` prefix. I then follow
-the Step Functions execution, verify that the rows reached the Iceberg table, and use the recorded runtime to estimate
-the cost of one ingestion.
+To exercise the architecture I deploy the stack, generate a batch of test files across both tables, and upload
+the whole folder at once. Then I follow the single Step Functions execution as it fans out into one EMR job per
+group, verify the rows landed in both Iceberg tables, and check whether grouping the small files actually saved
+on EMR.
 
 <div className="architecture-layer-heading">
   <span>01</span>
@@ -436,27 +224,14 @@ post-deployment setup.
 ### Complete the post-deployment setup
 
 The post-deployment script uploads the PySpark entrypoint to S3. In accounts where Lake Formation governs Data
-Catalog access, it also applies the grants required by the EMR role.
+Catalog access, it also applies the grants the EMR role needs on the catalog, database, and both tables
+(`test_data` and `customers`).
 
 ```bash
 ./scripts/post-deploy.sh
 ```
 
 The script is idempotent, so it is safe to run more than once.
-
-```bash
-# Upload PySpark entrypoint
-aws s3 cp emr/load_data.py "s3://${DATA_BUCKET}/emr/load_data.py"
-
-# Required only when Lake Formation permissions govern the catalog:
-# apply grants (catalog → database → table)
-aws lakeformation grant-permissions \
-  --principal "DataLakePrincipalIdentifier=${EMR_ROLE_ARN}" \
-  --resource '{"Catalog":{"Id":"<catalog-id>"}}' \
-  --permissions '["CREATE_DATABASE", "DESCRIBE"]'
-
-# ... other lakeformation permissions
-```
 
 <figure>
   <img
@@ -474,34 +249,24 @@ Formation grant commands can be omitted.
   <h4>Run the pipeline</h4>
 </div>
 
-### Prepare the test file
+### Prepare the test batch
 
-The test file I'll use to trigger the pipeline is a minimal 3-row Parquet file (1.3 KB) with the 
-same schema as the Iceberg table declared in the SAM template:
+`scripts/generate_test_data.py` writes a folder of small Parquet files split across both tables, with a couple
+of deliberately larger files mixed in so the size threshold has something to isolate. The `test_data` files
+carry `id`, `name`, and `amount`; the `customers` files carry `customer_id`, `email`, and `region`.
 
-<table>
-  <thead>
-    <tr><th>id</th><th>name</th><th>amount</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>1</td><td>Alice</td><td>100.50</td></tr>
-    <tr><td>2</td><td>Bob</td><td>200.75</td></tr>
-    <tr><td>3</td><td>Charlie</td><td>350.00</td></tr>
-  </tbody>
-</table>
-
-The repository includes `scripts/generate_test_data.py` for generating the file locally.
+```bash
+python scripts/generate_test_data.py --out test-batch --count 10
+```
 
 ### Trigger the workflow
 
-The `trigger.sh` script uploads a Parquet file to the `feed/` prefix, which fires
-the EventBridge rule and starts the state machine.
+`trigger.sh` uploads the whole folder to the `feed/` prefix. Each object lands in the SQS queue; on its next
+tick the scheduled Message Poller drains the queue and starts **one** state machine execution for the batch.
 
 ```bash
-./scripts/trigger.sh test-data.parquet
-# Bash output
-# Uploading test-data.parquet to s3://<bucket>/feed/...
-# Pipeline triggered. Monitor execution in the Step Functions console.
+./scripts/trigger.sh test-batch
+# Uploads every *.parquet under test-batch/ to s3://<bucket>/feed/
 ```
 
 <figure>
@@ -512,26 +277,43 @@ the EventBridge rule and starts the state machine.
   />
 </figure>
 
+In the `feed/` prefix the batch now sits as ten objects with a telling spread of sizes — most are a few KB, but
+a couple (here `customers-03` at 18 KB) are several times larger. That size gap is exactly what the pipeline
+keys on to decide which files get their own EMR job.
+
+<figure>
+  <img
+    src="/assets/media/serverless-etl/feed-objects.png"
+    alt="The feed/ prefix in S3 with ten uploaded parquet objects and their sizes"
+    style={{width: '100%'}}
+  />
+</figure>
+
 ### Follow the execution
 
-The EventBridge `InputTransformer` constructs the following state machine input from the S3 event 
-that I triggered.
+The Message Poller resolves each file to its table and hands the state machine a flat list — each entry
+carrying the resolved `TableName` and the object's `Size`, which is what the validate step bin-packs on. The
+Map state then runs one EMR job per group, so the ten uploaded files become a single execution with a handful
+of jobs — the small files packed together, each large file on its own.
 
 ```json
-{
-  "SourceFileTableNameMapping": [
-    {"SourceFile": "feed/test-data.parquet"}
-  ],
-  "Event": {
-    "source": "aws.s3",
-    "detail-type": "Object Created",
-    "key": "feed/test-data.parquet"
-  }
-}
+[
+  {
+    "SourceFile": "feed/test-data-06-20260911T125144Z-10456.parquet",
+    "TableName": "test_data",
+    "Size": 12833
+  },
+  {
+    "SourceFile": "feed/customers-01-20260911T125136Z-29403.parquet",
+    "TableName": "customers",
+    "Size": 4044
+  },
+  ...
+]
 ```
 
-As the workflow runs through each step, I see successful states as green. The
-image below is what the successful execution looks like.
+As the workflow runs, successful states show green. The execution below fanned the batch out across its groups
+and completed.
 
 <figure>
   <img 
@@ -541,11 +323,23 @@ image below is what the successful execution looks like.
   />
 </figure>
 
-### Verify the Iceberg table
+That one execution fanned out into exactly three EMR jobs — you can see the grouping in the job-run names: the
+two large files each landed in their own single-file job (`grp0-1files`, `grp1-1files`), while all eight small
+files were packed into one shared job (`grp2-8files`).
 
-Open the `test_data` table in the S3 Tables console and select **Preview** to inspect
-the rows written by the pipeline. The preview confirms that all three records from the test file landed in the
-Iceberg table.
+<figure>
+  <img
+    src="/assets/media/serverless-etl/emr-jobs-grouped.png"
+    alt="Three EMR Serverless job runs from one execution: grp0 and grp1 with one file each, grp2 with eight files"
+    style={{width: '100%'}}
+  />
+</figure>
+
+### Verify the Iceberg tables
+
+Open the `test_data` table in the S3 Tables console and select **Preview** to inspect the rows the pipeline
+wrote. Alongside the source columns, each row now carries the `ingest_datetime` stamped for its job run and the
+`source_file` URI it came from.
 
 <figure>
   <img 
@@ -555,85 +349,107 @@ Iceberg table.
   />
 </figure>
 
+The `customers` table is populated by the same run — same `ingest_datetime` as `test_data`, confirming the
+batch fanned out to both tables from one execution.
+
+<figure>
+  <img
+    src="/assets/media/serverless-etl/customers-preview.png"
+    alt="S3 Tables preview of the customers table: customer_id, email, region, ingest_datetime, source_file"
+    style={{width: '100%'}}
+  />
+</figure>
+
+### Reruns are safe
+
+To prove the idempotency claim, I re-ran the same execution. The loader reads each file but skips the append
+when that `source_file` is already in the table — so the second run committed nothing. Here's the driver log
+from the batched small-file job on the rerun:
+
+```text
+Batch of 8 file(s) into catalog <ACCOUNT_ID>:s3tablescatalog/serverless-etl-table-bucket
+Loading .../feed/customers-01-...-29403.parquet into s3tablesbucket.default.customers
+  read 165 records
+  skip .../feed/customers-01-...-29403.parquet -- already loaded into 's3tablesbucket.default.customers'
+Loading .../feed/test-data-04-...-29834.parquet into s3tablesbucket.default.test_data
+  read 145 records
+  skip .../feed/test-data-04-...-29834.parquet -- already loaded into 's3tablesbucket.default.test_data'
+  ... (all 8 files skipped)
+```
+
+All eight files skipped; the table row counts were unchanged. That's the whole safety net for a small team —
+if a run half-fails, you just run it again.
+
 <div className="architecture-layer-heading">
   <span>03</span>
   <h4>Review the result</h4>
 </div>
 
-### Execution cost
+### Did grouping actually save money?
 
-This execution processed a 1.3 KB Parquet file through eight state transitions in 2 minutes and 31 seconds. Using
-the recorded usage, I estimate the cost of this ingestion as follows:
+The batch is 10 files (8 small, 2 big) run as **3 EMR jobs**. The billed resource use per job, from the EMR
+console:
 
 <table>
   <thead>
     <tr>
-      <th>Service</th>
-      <th>Usage</th>
-      <th>Cost</th>
+      <th>Job</th>
+      <th>Files</th>
+      <th>Billed vCPU-hours</th>
+      <th>Billed memoryGB-hours</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Step Functions</strong></td>
-      <td>8 state transitions × $0.000025</td>
-      <td>$0.000200</td>
+      <td>Group 1 (small, batched)</td>
+      <td>8</td>
+      <td>0.287</td>
+      <td>1.147</td>
     </tr>
     <tr>
-      <td><strong>Lambda</strong> (ARM64, 128 MB)</td>
-      <td>80 ms duration, 1 invocation</td>
-      <td>$0.000001</td>
+      <td>Group 2 (big)</td>
+      <td>1</td>
+      <td>0.267</td>
+      <td>1.067</td>
     </tr>
     <tr>
-      <td><strong>EMR Serverless</strong> (ARM64)</td>
-      <td>~2 min 24 s total, 0.267 vCPU-hours / 1.067 GB-hours billed</td>
-      <td>$0.016</td>
+      <td>Group 3 (big)</td>
+      <td>1</td>
+      <td>0.267</td>
+      <td>1.067</td>
     </tr>
     <tr>
-      <td><strong>S3</strong></td>
-      <td>2 PUTs + 3 GETs + ~4 KB stored</td>
-      <td>$0.000011</td>
-    </tr>
-    <tr>
-      <td><strong>EventBridge</strong></td>
-      <td>2 events (S3 trigger + custom)</td>
-      <td>$0.000001</td>
-    </tr>
-    <tr>
-      <td><strong>Total</strong></td>
-      <td></td>
-      <td><strong>≈ $0.016</strong></td>
+      <td><strong>Grouped total</strong></td>
+      <td>10</td>
+      <td><strong>0.821</strong></td>
+      <td><strong>3.281</strong></td>
     </tr>
   </tbody>
 </table>
 
-EMR Serverless compute accounts for nearly all of the execution cost. After the job completes, the auto-stop timer
-begins and stops the application after two idle minutes. This removes idle EMR compute charges between loads, although
-stored data, logs, and the customer-managed KMS key can still incur ongoing costs.
-
-The stack is tagged with an application identifier that CloudFormation passes to its resources. I can activate this
-tag for cost allocation and use it to track the pipeline in AWS Cost Explorer and AWS Budgets.
+Every job billed about the same (~0.27 vCPU-hours) no matter what it loaded — that's the EMR Serverless per-job
+floor. Running the 8 small files as separate jobs would pay that floor 8 more times: ~2.67 vCPU-hours vs 0.821
+grouped, roughly **3× less billed compute** for the same data. And between batches the app auto-stops after two
+idle minutes, so there's no idle compute at all.
 
 ---
 
 <br/>
 
-<h2 id="tradeoffs-and-next-steps">Part 4: Tradeoffs and next steps</h2>
+<h2 id="tradeoffs-and-next-steps">Part 3: Tradeoffs and next steps</h2>
 
-This architecture is designed for infrequent, unpredictable uploads. The demo I put together proves the core 
-workflow, but in production, it must also handle messier cases like duplicate events, higher traffic, 
-and invalid raw data. 
+Already handled: size-based grouping so EMR cost tracks the data, and safe re-runs via the `source_file` skip.
 
-If I were taking this to production with higher volume or less-trusted sources, these are the first things I'd address:
-  - Protect persistent data in S3 from stack deletion or replacement.
-  - Prevent data duplication by tracking which S3 object versions have already been ingested.
-  - Batch higher volume ingestion with an SQS queue and process multiple files in the same EMR job.
-  - Add data quality checks and inspect invalid files in a separate location
+Where I'd take it next:
+
+- **Skip EMR entirely on a re-run.** Today the skip happens *inside* the job — a re-run still starts Spark to find the files already loaded. Negligible at ~10 files/day, but a DynamoDB "processed files" ledger checked in the poller could skip them *before* EMR starts. Cheap correctness now; the optimization waits until scale pays for it.
+- **Protect persistent S3 data** from stack deletion or replacement.
+- **Quarantine** invalid or unmapped files instead of failing the group.
+- **Data-quality checks** before the append.
 
 ## Summary
 
-Hope you enjoyed walking through this small project with me. It demonstrates an event-driven pipeline that 
-loads parquet files from S3 into Iceberg using EventBridge, Step Functions, and EMR Serverless. I deployed it 
-with AWS SAM and verified with a test run that cost roughly 2 cents. The design fits low-volume workloads and includes
-future direction for production.
+A serverless pipeline that batches a day's Parquet uploads into Apache Iceberg — SQS buffer, scheduled drain,
+size-based bin-packing, one EMR job per group. Built with AWS SAM. The
+[code is on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables).
 

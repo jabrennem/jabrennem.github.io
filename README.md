@@ -4,6 +4,8 @@ Personal portfolio site for Joshua Brenneman — software engineering, audio pro
 
 Built with React, Vite, and React Router. Deployed to GitHub Pages via GitHub Actions.
 
+GitHub repos show the code. These blog posts focus on narrative, (problem + solution, the reasoning behind the decisions, quick test)
+
 ## Development
 
 ```bash

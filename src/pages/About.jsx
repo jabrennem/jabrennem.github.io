@@ -53,8 +53,8 @@ export default function About() {
         </p>
         <p>
           Music is another way I get to make things. I write, produce, mix, and master records, and I'm getting into
-          building audio tools and exploring other creative technologies. On the <Link to="/blog">blog</Link>, I write
-          about those projects and what I'm learning along the way.
+          building audio tools and exploring other creative technologies. In the <Link to="/blog">blog</Link> tab, I plan
+          on sharing small AI Agent, Digital Signal Processing, NLP, and AWS Cloud projects I'm learning along the way.
         </p>
       </section>
 

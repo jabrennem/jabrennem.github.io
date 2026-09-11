@@ -9,8 +9,8 @@ export default function StorageDiagram() {
         style={{ width: '100%', height: 'auto', maxWidth: '860px' }}
       >
         <title id="storage-diagram-title">
-          A source S3 bucket holds Parquet files under the feed prefix. The pipeline transforms the files
-          into Apache Iceberg tables in a target S3 Table Bucket.
+          A source S3 bucket holds a daily batch of Parquet files under the feed prefix. The pipeline loads the
+          files into two managed Apache Iceberg tables (test_data and customers) in a target S3 Table Bucket.
         </title>
         <defs>
           <marker id="storage-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
@@ -25,7 +25,7 @@ export default function StorageDiagram() {
         <text x="180" y="94" textAnchor="middle" fill="#eff3f8" fontSize="20" fontWeight="600" fontFamily="Inter, system-ui, sans-serif">S3 Bucket</text>
         <rect x="66" y="116" width="228" height="47" rx="4" fill="#141b24" stroke="#3a4a5d" strokeWidth="1" />
         <text x="180" y="136" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">feed/</text>
-        <text x="180" y="153" textAnchor="middle" fill="#eff3f8" fontSize="13" fontFamily="Inter, system-ui, sans-serif">source-file.parquet</text>
+        <text x="180" y="153" textAnchor="middle" fill="#eff3f8" fontSize="13" fontFamily="Inter, system-ui, sans-serif">daily batch of *.parquet</text>
         <text x="180" y="185" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">Raw incoming data</text>
 
         <path d="M350,129 L510,129" stroke="#86d2c2" strokeWidth="2" fill="none" markerEnd="url(#storage-arrow)" />
@@ -35,13 +35,16 @@ export default function StorageDiagram() {
           TARGET
         </text>
         <rect x="530" y="54" width="300" height="150" rx="8" fill="#1c2531" stroke="#86d2c2" strokeWidth="1.5" />
-        <text x="680" y="94" textAnchor="middle" fill="#eff3f8" fontSize="20" fontWeight="600" fontFamily="Inter, system-ui, sans-serif">S3 Table Bucket</text>
-        <rect x="566" y="116" width="228" height="47" rx="4" fill="#141b24" stroke="#3a4a5d" strokeWidth="1" />
-        <text x="680" y="136" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">default</text>
-        <text x="680" y="153" textAnchor="middle" fill="#eff3f8" fontSize="13" fontFamily="Inter, system-ui, sans-serif">Iceberg table</text>
-        <text x="680" y="185" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">Managed, queryable data</text>
+        <text x="680" y="88" textAnchor="middle" fill="#eff3f8" fontSize="20" fontWeight="600" fontFamily="Inter, system-ui, sans-serif">S3 Table Bucket</text>
+        <rect x="560" y="104" width="110" height="44" rx="4" fill="#141b24" stroke="#3a4a5d" strokeWidth="1" />
+        <text x="615" y="122" textAnchor="middle" fill="#aab7c7" fontSize="11" fontFamily="Inter, system-ui, sans-serif">default</text>
+        <text x="615" y="139" textAnchor="middle" fill="#eff3f8" fontSize="13" fontFamily="Inter, system-ui, sans-serif">test_data</text>
+        <rect x="690" y="104" width="110" height="44" rx="4" fill="#141b24" stroke="#3a4a5d" strokeWidth="1" />
+        <text x="745" y="122" textAnchor="middle" fill="#aab7c7" fontSize="11" fontFamily="Inter, system-ui, sans-serif">default</text>
+        <text x="745" y="139" textAnchor="middle" fill="#eff3f8" fontSize="13" fontFamily="Inter, system-ui, sans-serif">customers</text>
+        <text x="680" y="185" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">Managed, queryable Iceberg tables</text>
       </svg>
-      <figcaption>Raw Parquet files move from the source bucket’s <code>feed/</code> prefix into managed Iceberg tables.</figcaption>
+      <figcaption>A daily batch of Parquet files moves from the source bucket’s <code>feed/</code> prefix into two managed Iceberg tables (<code>test_data</code> and <code>customers</code>).</figcaption>
     </figure>
   );
 }
