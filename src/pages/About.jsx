@@ -45,11 +45,10 @@ export default function About() {
           draw on. I learned to break complex systems into tangible pieces, look for patterns, and derive meaning from what I find.
         </p>
         <p>
-          Today I design AWS-native platforms for bioinformatics research, clinical genomics, data architecture, and machine 
-          learning. I enjoy working with people to make good architectural decisions and improve the systems they use in 
-          production. I really enjoy the interdisciplinary work and collaborating with people from different backgrounds
-          and cultures. Working across a lot of different areas has also made me good at breaking down complex ideas for 
-          others.
+          Today I design AWS-native platforms for bioinformatics research, data lake house architecture, and agentic software. I 
+          enjoy working with people to make good architectural decisions and improve the systems they use in production. I really 
+          enjoy the interdisciplinary work and collaborating with people from different backgrounds and cultures. Working across 
+          a lot of different areas has also made me good at breaking down complex ideas for others.
         </p>
         <p>
           Music is another way I get to make things. I write, produce, mix, and master records, and I'm getting into
