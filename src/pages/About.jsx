@@ -98,7 +98,7 @@ export default function About() {
       <section className="section" aria-labelledby="projects-heading">
         <div className="section-heading">
           <p className="eyebrow" id="projects-heading">Featured projects</p>
-          <p>Small, deployable AWS projects that you can deploy in your own environment.</p>
+          <p>Small, open-source projects showcasing work I'm interested in.</p>
         </div>
         <div className="writing-series">
           {featuredPosts.map((post) => (
@@ -136,7 +136,7 @@ export default function About() {
       <section className="section" aria-labelledby="about-music-heading">
         <div className="section-heading">
           <p className="eyebrow" id="about-music-heading">Music I've worked on</p>
-          <p>And finally, here's a playlist of my personal music and songs I've mixed/mastered for others :)</p>
+          <p>And finally, I mentioned I like writing music. Here's a playlist of personal music and songs I've mixed/mastered for others :)</p>
         </div>
         <div className="spotify-embed">
           <iframe
