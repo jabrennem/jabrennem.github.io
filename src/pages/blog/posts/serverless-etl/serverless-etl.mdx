@@ -21,16 +21,10 @@ import { Link } from 'react-router-dom';
 
 export const Thumbnail = () => <ArchitectureDiagram thumbnail />;
 
-I wanted to share an architecture for a data engineering problem I for a real, slightly 
-awkward workload working with 
-an external team that delivers a batch of Parquet files of varying size into S3 every day. I need to load 
-the files into Apache Iceberg tables without keeping compute running between 
-uploads and spinning up more jobs (or more cost) than the batch actually warrants.
-
-I start with the requirements, explain how they shaped the storage, orchestration, and compute layers — and the
-reasoning behind each decision — with a short note on how it's built. Then I run it end to end, look at whether
-the batching actually saved money, and finish with the current tradeoffs and the improvement I'd reach for next
-if the volume grew.
+I wanted to share an architecture for a data engineering problem I encountered for a real, 
+slightly awkward workload in AWS. I start with the requirements and explain how they shaped the storage, 
+orchestration, and compute layers. Then, I run an end-to-end test with a quick cost analysis at the end.
+Finally, I finish with the current tradeoffs and list improvements I'd start on next if the volume grew.
 
 [View the repository on GitHub →](https://github.com/jabrennem/serverless-etl-s3-tables)
 
@@ -50,19 +44,22 @@ if the volume grew.
 
 ### The problem
 
-An external team uploads a batch of Parquet files to S3 most days — roughly 8 to 10 at a time, a few hundred
-records each. They usually arrive together, but can also be delayed by hours. Each file is destined for one of a
-couple of Iceberg tables in our catalog. Every once in a while that same team sends a much larger file, with
-hundreds of millions of records.
+There is an external team that delivers a batch of small Parquet files to an S3 bucket every day. There are 
+roughly 8 to 10 at a time with a few hundred to couple thousand records each. They usually arrive together,
+but can also be delayed by hours. Each file is ingested into a specific Iceberg table in our catalog. Every 
+once in a while, the same team also sends in the same batch much larger files with hundreds of millions of 
+records that require some transformation logic.
 
-I'm on a small team, so the design has to require the least amount of resource management possible: when
-something goes wrong I want to diagnose it and get the data ingested again as quickly as possible. Cost is a
-priority too — the files are usually small, so I don't want to pay for a heavyweight job (or several) to move a
-few kilobytes.
+I'm on a small team, so the design must require the least amount of resource management possible. When
+something goes wrong I want to diagnose it quickly and retry the workflow so the data can be ingested again as 
+quickly as possible. Cost must be minimal since the files are generally small. I don't want to pay for a 
+heavyweight job unless it's for a file with millions of records.
 
-That shapes four requirements. The pipeline should consolidate a day's uploads into one run instead of reacting
-to each file, scale to zero between batches, spend compute in proportion to the data, and log enough history to
-trace a failure and safely re-run it.
+That shapes four requirements. The pipeline should:
+- consolidate a day's uploads into one run instead of reacting to each file
+- scale to zero between batches
+- spend compute in proportion to the data
+- log enough history to trace a failure and safely re-run it.
 
 <div className="design-principles" aria-label="Pipeline requirements">
   <div>
@@ -83,8 +80,7 @@ trace a failure and safely re-run it.
 </div>
 ### The solution
 
-I split the solution into three layers so each concern can be designed and operated
-independently:
+I split the solution into three layers
 
 - Storage
 - Orchestration
@@ -97,9 +93,10 @@ independently:
 
 This architecture separates storage for the incoming data feed and the Iceberg table data referenced by
 downstream services and analytics teams. I store the source data in a general S3 bucket and use an S3 Table
-Bucket for the AWS-managed Iceberg tables — a clear boundary between raw data and catalog data. Incoming files
-land under the `feed/` prefix, which gives the pipeline a single place to watch, and each file resolves by name
-to one of two Iceberg tables (`test_data` and `customers`).
+Bucket for the AWS-managed Iceberg tables. This creates a clear boundary between raw data and catalog 
+data. Incoming files from the external team land under the `feed/` prefix, which gives the pipeline a 
+single place to watch, and in my demo, each file resolves by name to one of two Iceberg 
+tables (`test_data` and `customers`).
 
 <StorageDiagram />
 
@@ -108,16 +105,20 @@ to one of two Iceberg tables (`test_data` and `customers`).
   <h4>Orchestration</h4>
 </div>
 
-The orchestration layer decides *when* to run and consolidates a window of uploads into a single execution.
-The obstacle is that reacting to each S3 event — with an EventBridge target, a Pipe, or an SQS-to-Lambda
-source — fans a batch of files out into several executions, because those integrations poll in parallel and
-flush eagerly. That would defeat the whole point of batching. So I decouple arrival from processing: S3 sends
-`Object Created` events for the `feed/` prefix to EventBridge, which drops them into an SQS queue that simply
-buffers the day's uploads. On a timer, EventBridge Scheduler invokes a Message Poller Lambda that drains the
-queue and, if anything is waiting, starts exactly one Step Functions execution with the whole file list. A
-timer is the one trigger that deterministically turns a window of arrivals into a single run. Step Functions
-then gives me a visual execution history, built-in error handling, and parallel task support — and every piece
-here is managed, so the layer scales itself.
+The orchestration layer decides *when* to run and consolidates a window of uploads into a single 
+execution for easy traceability. When the files are uploaded with a `feed/` prefix, it triggers 
+an `S3 Object Created` event that is added to an SQS queue. The events wait in the queue until it's 
+time to ingest. 
+
+There is an EventBridge scheduler that invokes a Message Poller Lambda at set times daily to
+check if there are messages in the queue. For example, if we poll at 9AM, we can launch 
+the execution on the queued morning files to make sure they are ingested in the morning, and then
+catch any delayed files with a 12PM check.
+
+If the message poller finds files, it will assign a table name to the file based on its name 
+and launch a single state machine execution with the full list of files from the queue. Step 
+Functions provides a few tools that help with observability such as execution history, 
+built-in error handling, and parallel task support.
 
 <OrchestrationDiagram />
 
@@ -126,34 +127,34 @@ here is managed, so the layer scales itself.
   <h4>Compute</h4>
 </div>
 
-The compute layer loads the batch into Iceberg while spending as little on EMR as the data allows. EMR
-Serverless is the expensive part, and it charges a per-job floor whether a job moves a few kilobytes or
-gigabytes. So the real decision is *how to pack files into jobs*.
+The compute layer loads the Parquet files into Iceberg tables while trying to spend as little as 
+possible. EMR Serverless is the expensive part of the pipeline, and each job is charged for start up 
+time whether a job ingests a few kilobytes or gigabytes. Because of this, I chose to group small Parquet
+files together using a size threshold. The larger Parquet files with millions of rows that require 
+special transformations use their own EMR job. That way, the blast radius is isolated and doesn't affect 
+the ingestion of other smaller files with simpler upload logic.
 
-A Lambda runs first: it validates the payload, resolves each file to its table by filename, and bin-packs by
-size. Every file over a threshold gets its own job; all the small files share one. A Step Functions Map state
-then runs one EMR Serverless Spark job per group — and a single job can write to several tables at once.
+First, a Lambda validates the payload and performs the file grouping logic. Every file over 
+a configurable size threshold gets its own job; all the small files share one. The state machine 
+then runs one EMR Serverless Spark job per group and a single job can write to several tables 
+at once.
 
-Loads are idempotent by design. Each row carries its source S3 URI in a `source_file` column, and before
-appending a file the job checks whether that URI is already in the table — so re-running a failed execution
-never double-loads. (I first tried `MERGE`, but it hit a Lake Formation 403 on S3 Tables; a plain
-check-then-append uses only the operations that work.)
+Loads are idempotent by design. The Iceberg tables contain the original S3 location in a `source_file` 
+column. Before appending data to a table, the job checks whether that file has already been ingested. If so,
+it simply skips it. This way if a job fails, I can just rerun the state machine and do not risk data 
+duplication. If any group fails, a Choice state fails the whole execution which keeps the completed executions 
+green and brings attention to the failed runs in the console.
 
-If any group fails, a Choice state fails the whole execution — keeping the completed loads and surfacing the
-failure in the console. Each job also drops a per-group stats JSON under `runs/<execution-id>/stats/` for
-downstream use, so nobody has to parse Spark logs.
+As a bonus, each job drops a per-group stats JSON under `runs/<execution-id>/stats/` for downstream analytics teams
+or dashboards to use, so nobody has to parse Spark logs.
 
 <ComputeDiagram />
 
 ### How it's built
 
-The whole thing is one AWS SAM application — an S3 bucket, an SQS queue, an EventBridge rule and Scheduler, two
-small Lambdas (the Message Poller and the Validate/bin-pack function), a Step Functions state machine, an EMR
-Serverless Spark application, and an S3 Table Bucket with the two Iceberg tables (`test_data` and `customers`).
-Keeping it in one template means the destinations and their schema exist before the first run and every change is
-reviewable in a pull request. I'm not walking through the YAML here — it drifts, and the diagrams above already
-show how the pieces fit — so the [full source is on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables)
-if you want to read it.
+The whole thing is one AWS SAM application in a `template.yaml`. I'm not walking through the 
+YAML here since the implementation can drift, and the diagrams above already show how the pieces fit. 
+[The full source is on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables) if you want to read it.
 
 <aside className="next-steps-callout" id="whats-next">
   <p className="eyebrow">Up next</p>
@@ -166,10 +167,10 @@ if you want to read it.
 
 <h2 id="demo-and-results">Part 2: Demo and Results</h2>
 
-To exercise the architecture I deploy the stack, generate a batch of test files across both tables, and upload
-the whole folder at once. Then I follow the single Step Functions execution as it fans out into one EMR job per
-group, verify the rows landed in both Iceberg tables, and check whether grouping the small files actually saved
-on EMR.
+I'm going to test the architecture on a small demo. I deploy the stack, generate a batch of test files, and upload 
+the whole folder at once. Then, I follow the single Step Functions execution as it fans out into one EMR job per
+group, verify the rows landed in both Iceberg tables, and check whether grouping the small files actually saves
+money on EMR.
 
 <div className="architecture-layer-heading">
   <span>01</span>
@@ -252,8 +253,9 @@ Formation grant commands can be omitted.
 ### Prepare the test batch
 
 `scripts/generate_test_data.py` writes a folder of small Parquet files split across both tables, with a couple
-of deliberately larger files mixed in so the size threshold has something to isolate. The `test_data` files
-carry `id`, `name`, and `amount`; the `customers` files carry `customer_id`, `email`, and `region`.
+of deliberately larger files mixed in so the size threshold has something to isolate. For demo purposes,
+the size threshold is set at 10KB. This threshold can be a lot more nuanced and reflective of the data in
+production.
 
 ```bash
 python scripts/generate_test_data.py --out test-batch --count 10
@@ -263,6 +265,8 @@ python scripts/generate_test_data.py --out test-batch --count 10
 
 `trigger.sh` uploads the whole folder to the `feed/` prefix. Each object lands in the SQS queue; on its next
 tick the scheduled Message Poller drains the queue and starts **one** state machine execution for the batch.
+Since this is just a quick demo, the Lambda is checking the queue for messages every 2 minutes. This would
+obviously be different in production.
 
 ```bash
 ./scripts/trigger.sh test-batch
@@ -278,8 +282,7 @@ tick the scheduled Message Poller drains the queue and starts **one** state mach
 </figure>
 
 In the `feed/` prefix the batch now sits as ten objects with a telling spread of sizes — most are a few KB, but
-a couple (here `customers-03` at 18 KB) are several times larger. That size gap is exactly what the pipeline
-keys on to decide which files get their own EMR job.
+a couple (here `customers-03` at 18 KB) are several times larger.
 
 <figure>
   <img
@@ -292,9 +295,14 @@ keys on to decide which files get their own EMR job.
 ### Follow the execution
 
 The Message Poller resolves each file to its table and hands the state machine a flat list — each entry
-carrying the resolved `TableName` and the object's `Size`, which is what the validate step bin-packs on. The
-Map state then runs one EMR job per group, so the ten uploaded files become a single execution with a handful
-of jobs — the small files packed together, each large file on its own.
+carrying the resolved `TableName` and the object's `Size`. The Map state then runs one EMR job per 
+group, so the ten uploaded files become a single execution with 3 jobs. One for the small files packed 
+together, and each large file on its own.
+
+In this demo, I'm using the same Pyspark script logic for the big files, but more complicated transformations
+could be implemented here. The transformations could increase processing time at production scale, so having
+the transformations in parallel means differents job finish around the same time and the small files are
+uploaded way before.
 
 ```json
 [
@@ -438,18 +446,19 @@ idle minutes, so there's no idle compute at all.
 
 <h2 id="tradeoffs-and-next-steps">Part 3: Tradeoffs and next steps</h2>
 
-Already handled: size-based grouping so EMR cost tracks the data, and safe re-runs via the `source_file` skip.
-
 Where I'd take it next:
 
-- **Skip EMR entirely on a re-run.** Today the skip happens *inside* the job — a re-run still starts Spark to find the files already loaded. Negligible at ~10 files/day, but a DynamoDB "processed files" ledger checked in the poller could skip them *before* EMR starts. Cheap correctness now; the optimization waits until scale pays for it.
+- **Skip EMR entirely on a re-run.** 
+   - Today the skip happens *inside* the job. A re-run still starts Spark to 
+     find the files already loaded. Negligible at ~10 files/day, but a DynamoDB 
+     "processed files" ledger checked in Lambda could filter previously uploaded
+     files *before* EMR starts.
 - **Protect persistent S3 data** from stack deletion or replacement.
-- **Quarantine** invalid or unmapped files instead of failing the group.
-- **Data-quality checks** before the append.
+- **Data-quality checks** before the append to mask or validate column values.
 
 ## Summary
 
-A serverless pipeline that batches a day's Parquet uploads into Apache Iceberg — SQS buffer, scheduled drain,
-size-based bin-packing, one EMR job per group. Built with AWS SAM. The
+A serverless pipeline that batches daily Parquet uploads into Apache Iceberg using a SQS buffer, 
+scheduled polling, size-based file grouping, one EMR job per group. Built with AWS SAM. The
 [code is on GitHub](https://github.com/jabrennem/serverless-etl-s3-tables).
 
