@@ -21,11 +21,11 @@ import { Link } from 'react-router-dom';
 
 export const Thumbnail = () => <ArchitectureDiagram thumbnail />;
 
-This project shows how I approach a data engineering architecture for a real, slightly awkward
-workload: an external team drops a batch of small Parquet files with hundreds to thousands of rows into S3 every 
-day. Every so often the files are very large with hundreds of millions of rows. I need to load the files into
-Apache Iceberg tables without keeping compute running between uploads — and without spinning up more jobs 
-(or more cost) than the batch actually warrants.
+I wanted to share an architecture for a data engineering problem I for a real, slightly 
+awkward workload working with 
+an external team that delivers a batch of Parquet files of varying size into S3 every day. I need to load 
+the files into Apache Iceberg tables without keeping compute running between 
+uploads and spinning up more jobs (or more cost) than the batch actually warrants.
 
 I start with the requirements, explain how they shaped the storage, orchestration, and compute layers — and the
 reasoning behind each decision — with a short note on how it's built. Then I run it end to end, look at whether
