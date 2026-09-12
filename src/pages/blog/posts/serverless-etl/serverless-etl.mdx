@@ -93,10 +93,8 @@ I split the solution into three layers
 
 This architecture separates storage for the incoming data feed and the Iceberg table data referenced by
 downstream services and analytics teams. I store the source data in a general S3 bucket and use an S3 Table
-Bucket for the AWS-managed Iceberg tables. This creates a clear boundary between raw data and catalog 
-data. Incoming files from the external team land under the `feed/` prefix, which gives the pipeline a 
-single place to watch, and in my demo, each file resolves by name to one of two Iceberg 
-tables (`test_data` and `customers`).
+Bucket for AWS-managed Iceberg tables. Incoming files from the external team land under the `feed/` prefix, 
+and in my demo, each file resolves by name to one of two Iceberg tables (`test_data` and `customers`).
 
 <StorageDiagram />
 
@@ -106,13 +104,13 @@ tables (`test_data` and `customers`).
 </div>
 
 The orchestration layer decides *when* to run and consolidates a window of uploads into a single 
-execution for easy traceability. When the files are uploaded with a `feed/` prefix, it triggers 
-an `S3 Object Created` event that is added to an SQS queue. The events wait in the queue until it's 
+execution for easy traceability. When the files are uploaded, it triggers an `S3 Object Created` 
+event that is added to an SQS queue. The events wait in the queue until it's 
 time to ingest. 
 
 There is an EventBridge scheduler that invokes a Message Poller Lambda at set times daily to
 check if there are messages in the queue. For example, if we poll at 9AM, we can launch 
-the execution on the queued morning files to make sure they are ingested in the morning, and then
+the execution on the queued files to make sure they are ingested in the morning, and then
 catch any delayed files with a 12PM check.
 
 If the message poller finds files, it will assign a table name to the file based on its name 
@@ -128,22 +126,22 @@ built-in error handling, and parallel task support.
 </div>
 
 The compute layer loads the Parquet files into Iceberg tables while trying to spend as little as 
-possible. EMR Serverless is the expensive part of the pipeline, and each job is charged for start up 
-time whether a job ingests a few kilobytes or gigabytes. Because of this, I chose to group small Parquet
-files together using a size threshold. The larger Parquet files with millions of rows that require 
-special transformations use their own EMR job. That way, the blast radius is isolated and doesn't affect 
-the ingestion of other smaller files with simpler upload logic.
+possible. EMR Serverless is the expensive part, and each job is charged for start up 
+time whether a job ingests a few KB or GB. Because of this, I group small Parquet
+files together using a size threshold. The larger Parquet files that require 
+special transformations use their own EMR job. That way, the blast radius is isolated if it fails
+and doesn't affect the ingestion of other smaller files with simpler upload logic.
 
-First, a Lambda validates the payload and performs the file grouping logic. Every file over 
-a configurable size threshold gets its own job; all the small files share one. The state machine 
-then runs one EMR Serverless Spark job per group and a single job can write to several tables 
+First, a Lambda validates the input and performs the file grouping logic. Every file over 
+a configurable size threshold gets its own job. The state machine 
+then runs one EMR job per group and a single job can write to several tables 
 at once.
 
-Loads are idempotent by design. The Iceberg tables contain the original S3 location in a `source_file` 
-column. Before appending data to a table, the job checks whether that file has already been ingested. If so,
-it simply skips it. This way if a job fails, I can just rerun the state machine and do not risk data 
-duplication. If any group fails, a Choice state fails the whole execution which keeps the completed executions 
-green and brings attention to the failed runs in the console.
+Jobs are idempotent. The Iceberg tables contain the original S3 location in a `source_file` 
+column. Before appending data to a table, the job checks whether that file has already been ingested
+or skips it. If a job fails, I can just rerun the state machine and do not risk data 
+duplication. If any group fails, a Choice state fails the whole execution at the end which 
+keeps the completed executions green and brings attention to the failed runs in the console.
 
 As a bonus, each job drops a per-group stats JSON under `runs/<execution-id>/stats/` for downstream analytics teams
 or dashboards to use, so nobody has to parse Spark logs.
@@ -263,14 +261,10 @@ python scripts/generate_test_data.py --out test-batch --count 10
 
 ### Trigger the workflow
 
-`trigger.sh` uploads the whole folder to the `feed/` prefix. Each object lands in the SQS queue; on its next
-tick the scheduled Message Poller drains the queue and starts **one** state machine execution for the batch.
-Since this is just a quick demo, the Lambda is checking the queue for messages every 2 minutes. This would
-obviously be different in production.
+`trigger.sh` uploads the whole folder to the `feed/` prefix.
 
 ```bash
 ./scripts/trigger.sh test-batch
-# Uploads every *.parquet under test-batch/ to s3://<bucket>/feed/
 ```
 
 <figure>
@@ -281,8 +275,8 @@ obviously be different in production.
   />
 </figure>
 
-In the `feed/` prefix the batch now sits as ten objects with a telling spread of sizes — most are a few KB, but
-a couple (here `customers-03` at 18 KB) are several times larger.
+In the `feed/` prefix the batch now sits as ten objects with different sizes. Most are a few KB, but
+a couple are several times larger.
 
 <figure>
   <img
@@ -294,10 +288,12 @@ a couple (here `customers-03` at 18 KB) are several times larger.
 
 ### Follow the execution
 
-The Message Poller resolves each file to its table and hands the state machine a flat list — each entry
-carrying the resolved `TableName` and the object's `Size`. The Map state then runs one EMR job per 
-group, so the ten uploaded files become a single execution with 3 jobs. One for the small files packed 
-together, and each large file on its own.
+The Message Poller resolves each file to its table and hands the state machine a flat list. Since this 
+is just a quick demo, the Lambda is checking the queue for messages every 2 minutes. This would 
+obviously be different in production. 
+
+The Map state then runs one EMR job per group, so the ten uploaded files become a single execution 
+with 3 jobs. One for the small files packed together, and each large file on its own.
 
 In this demo, I'm using the same Pyspark script logic for the big files, but more complicated transformations
 could be implemented here. The transformations could increase processing time at production scale, so having
@@ -331,9 +327,8 @@ and completed.
   />
 </figure>
 
-That one execution fanned out into exactly three EMR jobs — you can see the grouping in the job-run names: the
-two large files each landed in their own single-file job (`grp0-1files`, `grp1-1files`), while all eight small
-files were packed into one shared job (`grp2-8files`).
+That one execution spawned 3 EMR jobs. The 2 large files each landed in their own single-file 
+job (`grp0-1files`, `grp1-1files`), while all eight small files were packed into one shared job (`grp2-8files`).
 
 <figure>
   <img
@@ -370,9 +365,8 @@ batch fanned out to both tables from one execution.
 
 ### Reruns are safe
 
-To prove the idempotency claim, I re-ran the same execution. The loader reads each file but skips the append
-when that `source_file` is already in the table — so the second run committed nothing. Here's the driver log
-from the batched small-file job on the rerun:
+To prove idempotency, I re-ran the same execution. The loader reads each file but skips the append
+when that `source_file` is already in the table. Here's the driver log from the batched small-file job on the rerun:
 
 ```text
 Batch of 8 file(s) into catalog <ACCOUNT_ID>:s3tablescatalog/serverless-etl-table-bucket
@@ -385,9 +379,6 @@ Loading .../feed/test-data-04-...-29834.parquet into s3tablesbucket.default.test
   ... (all 8 files skipped)
 ```
 
-All eight files skipped; the table row counts were unchanged. That's the whole safety net for a small team —
-if a run half-fails, you just run it again.
-
 <div className="architecture-layer-heading">
   <span>03</span>
   <h4>Review the result</h4>
@@ -395,50 +386,53 @@ if a run half-fails, you just run it again.
 
 ### Did grouping actually save money?
 
-The batch is 10 files (8 small, 2 big) run as **3 EMR jobs**. The billed resource use per job, from the EMR
-console:
+The batch contains 10 files: 8 small and 2 large. The 8 small files cost nearly the same to process
+together as either large file did alone. This is because there of the per job floor. Reducing the number 
+of jobs produced most of the savings. After each batch, the application auto-stops after two idle minutes 
+to avoid ongoing charges between daily runs.
+
 
 <table>
   <thead>
     <tr>
-      <th>Job</th>
-      <th>Files</th>
+      <th>Workload</th>
+      <th>EMR jobs</th>
       <th>Billed vCPU-hours</th>
-      <th>Billed memoryGB-hours</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Group 1 (small, batched)</td>
-      <td>8</td>
+      <td>8 small files together (actual)</td>
+      <td>1</td>
       <td>0.287</td>
-      <td>1.147</td>
     </tr>
     <tr>
-      <td>Group 2 (big)</td>
+      <td>Large file 1 (actual)</td>
       <td>1</td>
       <td>0.267</td>
-      <td>1.067</td>
     </tr>
     <tr>
-      <td>Group 3 (big)</td>
+      <td>Large file 2 (actual)</td>
       <td>1</td>
       <td>0.267</td>
-      <td>1.067</td>
     </tr>
     <tr>
-      <td><strong>Grouped total</strong></td>
-      <td>10</td>
+      <td><strong>Grouped total (actual)</strong></td>
+      <td><strong>3</strong></td>
       <td><strong>0.821</strong></td>
-      <td><strong>3.281</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Without grouping (estimated)</strong></td>
+      <td><strong>10</strong></td>
+      <td><strong>~2.67</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Reduction</strong></td>
+      <td><strong>7 fewer</strong></td>
+      <td><strong>69%</strong></td>
     </tr>
   </tbody>
 </table>
-
-Every job billed about the same (~0.27 vCPU-hours) no matter what it loaded — that's the EMR Serverless per-job
-floor. Running the 8 small files as separate jobs would pay that floor 8 more times: ~2.67 vCPU-hours vs 0.821
-grouped, roughly **3× less billed compute** for the same data. And between batches the app auto-stops after two
-idle minutes, so there's no idle compute at all.
 
 ---
 

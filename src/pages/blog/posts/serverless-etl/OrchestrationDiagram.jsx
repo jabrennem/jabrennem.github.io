@@ -67,7 +67,6 @@ export default function OrchestrationDiagram() {
         <text x="705" y="285" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">one execution</text>
         <text x="705" y="303" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">per batch</text>
       </svg>
-      <figcaption>An EventBridge rule buffers <code>feed/</code> uploads in SQS; on a schedule, the Message Poller drains the queue and starts a single Step Functions execution for the whole batch.</figcaption>
     </figure>
   );
 }

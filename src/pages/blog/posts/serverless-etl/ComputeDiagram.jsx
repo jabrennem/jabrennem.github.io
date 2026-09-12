@@ -62,7 +62,6 @@ export default function ComputeDiagram() {
         <text x="885" y="307" textAnchor="middle" fill="#eff3f8" fontSize="16" fontWeight="600" fontFamily="Inter, system-ui, sans-serif">EventBridge</text>
         <text x="885" y="327" textAnchor="middle" fill="#aab7c7" fontSize="11" fontFamily="Inter, system-ui, sans-serif">GroupLoadComplete</text>
       </svg>
-      <figcaption>The Validate Input Lambda bin-packs files by size; a Map state runs one EMR Serverless job per group, each loading the <code>test_data</code> and <code>customers</code> tables, recording stats, and emitting a completion event.</figcaption>
     </figure>
   );
 }

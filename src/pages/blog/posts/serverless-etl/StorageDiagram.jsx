@@ -44,7 +44,6 @@ export default function StorageDiagram() {
         <text x="745" y="139" textAnchor="middle" fill="#eff3f8" fontSize="13" fontFamily="Inter, system-ui, sans-serif">customers</text>
         <text x="680" y="185" textAnchor="middle" fill="#aab7c7" fontSize="12" fontFamily="Inter, system-ui, sans-serif">Managed, queryable Iceberg tables</text>
       </svg>
-      <figcaption>A daily batch of Parquet files moves from the source bucket’s <code>feed/</code> prefix into two managed Iceberg tables (<code>test_data</code> and <code>customers</code>).</figcaption>
     </figure>
   );
 }
