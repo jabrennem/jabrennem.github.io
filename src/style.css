@@ -100,6 +100,8 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .spotify-embed { border: 1px solid var(--border); border-radius: 12px; margin-top: 1.5rem; max-width: 800px; overflow: hidden; }
 .spotify-embed iframe { border: 0; display: block; }
 .spotify-link { display: inline-block; font-size: 0.9rem; margin-top: 0.8rem; }
+.about-music-photo { border: 1px solid var(--border); border-radius: 12px; margin: 1.5rem 0 0; max-width: 800px; overflow: hidden; }
+.about-music-photo img { display: block; height: auto; width: 100%; }
 .callout, .empty-state { background: var(--surface); border: 1px solid var(--border); margin-bottom: 2rem; padding: 2rem; }
 .callout h2, .empty-state h2 { font-size: clamp(1.5rem, 3vw, 2.15rem); }
 .callout-link { white-space: nowrap; }

@@ -132,6 +132,42 @@ export default function About() {
           <h2>AWS Certified Developer - Associate</h2>
         </div>
       </section>
+
+      <section className="section" aria-labelledby="about-music-heading">
+        <div className="section-heading">
+          <p className="eyebrow" id="about-music-heading">Music I've worked on</p>
+          <p>And finally, here's a playlist of my personal music and songs I've mixed/mastered for others :)</p>
+        </div>
+        <div className="spotify-embed">
+          <iframe
+            title="Joshua Brenneman audio production playlist on Spotify"
+            src="https://open.spotify.com/embed/playlist/2ZA5D6NJ5HQanMRfAfX8zQ?utm_source=generator&amp;si=1472ec09bbaf4aad"
+            width="100%"
+            height="460"
+            frameBorder="0"
+            allowFullScreen
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+          />
+        </div>
+        <a
+          className="spotify-link"
+          href="https://open.spotify.com/playlist/2ZA5D6NJ5HQanMRfAfX8zQ"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open in Spotify <span aria-hidden="true">↗</span>
+        </a>
+        <figure className="about-music-photo">
+          <img
+            src="/assets/media/josh-live-blue.jpg"
+            width="1568"
+            height="1045"
+            alt="Joshua playing guitar onstage under blue stage light"
+            loading="lazy"
+          />
+        </figure>
+      </section>
     </section>
   );
 }
