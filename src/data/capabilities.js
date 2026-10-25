@@ -1,27 +1,27 @@
 const capabilities = [
   {
-    title: 'Platform engineering',
-    description: 'AWS platform architecture, serverless systems, distributed workflows, event-driven architecture, and developer enablement.',
+    title: 'Research data platforms',
+    description: 'AWS-native lakehouse architecture, data management, and reliable platforms for scientific teams.',
   },
   {
-    title: 'Cloud & data platforms',
-    description: 'Amazon S3, Athena, Apache Iceberg, AWS Glue, EMR, ETL, and lakehouse architecture.',
+    title: 'Event-driven AWS architecture',
+    description: 'Serverless workflows, Step Functions, Lambda, queues, and integrations that scale with the work.',
   },
   {
-    title: 'Compute & containers',
-    description: 'AWS Lambda, AWS Batch, Docker, and production orchestration patterns.',
+    title: 'Production bioinformatics systems',
+    description: 'Genomics workflows and scientific software that move from research ideas into dependable operations.',
   },
   {
-    title: 'Infrastructure & delivery',
-    description: 'AWS CDK, CloudFormation, AWS SAM, GitHub Actions, CodePipeline, CodeBuild, and CI/CD.',
+    title: 'AI agents & MCP integrations',
+    description: 'Agentic applications that connect models to data platforms, tools, and real operational workflows.',
   },
   {
-    title: 'Software engineering',
-    description: 'Python, TypeScript, and JavaScript for application architecture and product development.',
+    title: 'Developer platforms & delivery',
+    description: 'Reusable infrastructure, deployment pipelines, and engineering patterns that help teams ship safely.',
   },
   {
-    title: 'AI platforms',
-    description: 'Amazon SageMaker, Amazon Bedrock, agentic application architecture, MCP, and AI-assisted engineering.',
+    title: 'Creative technology',
+    description: 'Music production, audio tools, and experiments that apply engineering discipline to creative work.',
   },
 ];
 

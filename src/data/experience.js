@@ -1,9 +1,20 @@
 const experience = [
   {
+    title: 'Data Architect',
+    date: 'Oct 2026 - Present',
+    dateTime: '2026-10',
+    company: 'Nationwide Children\'s Hospital · Office of Data Sciences · Cloud Solutions Team',
+    bullets: [
+      'Lead the technical architecture and evolution of AWS-based data lakehouse infrastructure, ETL frameworks, and data management capabilities.',
+      'Define architectural standards, reusable patterns, and technical direction across data engineering initiatives.',
+      'Create agents with Amazon Bedrock AgentCore to orchestrate data lakehouse operations.',
+    ],
+  },
+  {
     title: 'Senior Software Engineer',
-    date: 'Apr 2023 - Present',
+    date: 'Apr 2023 - Oct 2026',
     dateTime: '2023-04',
-    company: 'Nationwide Children\'s Hospital · Office of Data Sciences, Cloud Solutions Team',
+    company: 'Nationwide Children\'s Hospital · Office of Data Sciences · Cloud Solutions Team',
     bullets: [
       'Lead architect and developer of a multi-account, research data lake house application in AWS that manages data catalog resources using Glue, storage in S3, ETL using Step Functions and EMR Serverless, governance and access control using Lake Formation and IAM, and lineage with Eventbridge.',
       'Build APIs via API Gateway, Eventbridge, and MCPs for data producers and consumers to integrate with the lake house',
@@ -21,10 +32,10 @@ const experience = [
     ],
   },
   {
-    title: 'Bioinformatics Software Developer - Research',
+    title: 'Bioinformatics Software Engineer · Research',
     date: 'Oct 2019 - Apr 2023',
     dateTime: '2019-10',
-    company: 'Nationwide Children\'s Hospital · Institute for Genomic Medicine, Cloud Solutions Team',
+    company: 'Nationwide Children\'s Hospital · Institute for Genomic Medicine · Cloud Solutions Team',
     bullets: [
       'Designed event-driven genomics workflows using Step Functions, Lambda, AWS Batch to process laboratory next generation sequencing pipelines.',
       'Contributed to the infrastructure of an in-house protocol Rapid Genome Sequencing for NICU patients.',
@@ -36,10 +47,10 @@ const experience = [
     ],
   },
   {
-    title: 'Bioinformatics Software Developer - Clinical',
+    title: 'Bioinformatics Software Engineer · Clinical',
     date: 'Oct 2017 - Oct 2019',
     dateTime: '2017-10',
-    company: 'Nationwide Children\'s Hospital · Institute for Genomic Medicine, Clinical Informatics Team',
+    company: 'Nationwide Children\'s Hospital · Institute for Genomic Medicine · Clinical Informatics Team',
     bullets: [
       'Collaborated with clinical directors to write software for production clinical genomics operations and Next Generation Sequencing pipelines.',
     ],

@@ -4,9 +4,19 @@ Copy and paste these into your LinkedIn experience sections.
 
 ---
 
+## Data Architect
+**Nationwide Children's Hospital · Office of Data Sciences**
+Oct 2026 - Present
+
+- Lead the technical architecture and evolution of AWS-based data lakehouse infrastructure, ETL frameworks, and data management capabilities
+- Define architectural standards, reusable patterns, and technical direction across data engineering initiatives
+- Create agents with Amazon Bedrock AgentCore to orchestrate data lakehouse operations
+
+---
+
 ## Senior Software Engineer
 **Nationwide Children's Hospital · Office of Data Sciences, Cloud Solutions Team**
-Apr 2023 - Present
+Apr 2023 - Oct 2026
 
 - Architect and lead developer of a multi-account research data lakehouse on AWS, managing petabyte-scale storage, ETL orchestration, governance, and data lineage across 10+ accounts
 - Build integration APIs and tooling for data producers and consumers to self-serve within the lakehouse platform
