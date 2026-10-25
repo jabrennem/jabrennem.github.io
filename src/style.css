@@ -209,6 +209,28 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .post-card-thumbnail .architecture-diagram svg { min-width: 0; }
 .architecture-diagram { margin: 0 0 2rem; overflow-x: auto; }
 .architecture-diagram svg { display: block; min-width: 600px; }
+.aws-credential { align-items: center; background: linear-gradient(120deg, #17273c, #232f3e); border: 1px solid #45566c; border-top: 3px solid #ff9900; border-radius: 8px; color: var(--text); display: grid; gap: 2rem; grid-template-columns: 150px minmax(0, 1fr); margin: 0 0 2rem; max-width: 900px; padding: 2rem; text-decoration: none; }
+.aws-credential:hover { border-color: #ffb454; }
+.aws-credential img { border-radius: 4px; display: block; height: auto; width: 100%; }
+.aws-credential .eyebrow { color: #ffb454; font-size: 0.68rem; margin-bottom: 0.6rem; }
+.aws-credential-title { font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 750; line-height: 1.15; margin-bottom: 0.75rem; }
+.aws-credential-title span { color: #c1cbd7; display: block; font-size: 0.65em; font-weight: 500; margin-top: 0.35rem; }
+.aws-credential-caption { color: #c1cbd7; font-size: 0.93rem; margin-bottom: 0.75rem; }
+.aws-credential-verify { color: #ffb454; font-size: 0.83rem; text-decoration: underline; text-underline-offset: 0.2em; }
+.aws-credential--thumbnail { gap: 1.25rem; grid-template-columns: 75px minmax(0, 1fr); margin: 0; padding: 1.1rem; }
+.aws-credential--thumbnail .aws-credential-title { font-size: 1.25rem; }
+.aws-credential--thumbnail .aws-credential-caption { font-size: 0.8rem; margin: 0; }
+.aws-reporting-diagram { margin: 2rem 0; max-width: 1000px; }
+.aws-reporting-diagram-scroll { border-radius: 10px; overflow-x: auto; }
+.aws-reporting-diagram-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.aws-reporting-diagram svg { display: block; min-width: 740px; width: 100%; }
+.aws-reporting-diagram figcaption { color: var(--muted); font-size: 0.8rem; margin-top: 0.8rem; max-width: 700px; }
+@media (max-width: 600px) {
+  .aws-credential { gap: 1rem; grid-template-columns: 85px minmax(0, 1fr); padding: 1rem; }
+  .aws-credential .eyebrow { font-size: 0.6rem; }
+  .aws-credential-caption { font-size: 0.8rem; }
+  .aws-credential--thumbnail { grid-template-columns: 60px minmax(0, 1fr); }
+}
 .part-kicker { align-items: center; color: var(--accent); display: flex; font-size: 0.76rem; font-weight: 750; gap: 0.65rem; letter-spacing: 0.12em; margin: 0 0 0.75rem; text-transform: uppercase; }
 .part-kicker span:nth-child(2) { color: var(--accent-strong); font-size: 1rem; letter-spacing: 0; }
 .design-principles { display: grid; gap: 0.8rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 2rem 0 2.5rem; max-width: 900px; }
