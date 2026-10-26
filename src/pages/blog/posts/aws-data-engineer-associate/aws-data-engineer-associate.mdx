@@ -21,9 +21,9 @@ export const Thumbnail = () => <CertificationBadge thumbnail />;
 <CertificationBadge />
 
 I recently passed the **AWS Certified Data Engineer – Associate** certification while working as a data
-architect on a team designing a pediatric research data lake at Nationwide Children's Hospital. Having 
-used Glue and Athena in production for years on a few different projects over the years, I wanted to 
-reinforce that experience with the latest AWS data engineering best practices.
+architect on a team designing a research data lake at the Office of Data Sciences at Nationwide Children's 
+Hospital. Having used services like Glue and Athena in production for years on a few different projects over 
+the years, I wanted to reinforce that experience with the latest AWS data engineering best practices.
 
 <nav className="table-of-contents" aria-label="Table of contents">
   <p className="eyebrow">On this page</p>
@@ -43,11 +43,12 @@ I bought three resources:
 - **[Udemy practice exams](https://www.udemy.com/course/practice-exams-aws-certified-data-engineer-associate-r/)** — Stéphane Maarek and Abhishek Singh.
 - **[Tutorials Dojo DEA-C01 practice exams](https://portal.tutorialsdojo.com/courses/aws-certified-data-engineer-associate-practice-exam-dea-c01/)** — Jon Bonso.
 
-I watched videos at **2× speed for familiar services** and **1–1.5× for unfamiliar ones**.
+I watched the videos at **2× speed for familiar services** and **1–1.5× for unfamiliar ones**.
 I took two practice exams straight through, reviewing them afterward, and two in practice mode,
-studying each question individually.
+studying each question individually. I found using pencil and paper to take notes helped me 
+remember details better. +1 for analog 👍🏻
 
-The practice exams helped me learn the wording and logic of AWS questions. Even with production
+The practice exams helped me learn the wording and logic of AWS questions. Even with years of production
 experience, the style can trip you up. My reading workflow was:
 
 1. **Read the final question first.**
@@ -61,7 +62,8 @@ experience, the style can trip you up. My reading workflow was:
     - What are the access patterns?
 4. **Eliminate answers**
     - Exclude answers that don't meet the goal/scenario?
-    - Choose managed services over self-managed services
+    - Choose managed services over self-managed services.
+    - Try to identify the 2 wrong, 1 overengineered pattern. 
 
 <h2 id="what-surprised-me">What surprised me about the exam</h2>
 
@@ -95,7 +97,7 @@ Which serverless solution meets the requirements with the **least operational ov
 
 - Aggregate source data from an API Gateway into a daily report for a website dashboard.
 - The aggregation takes only a couple of seconds.
-- Query historical trends for quarterly growth reports.
+- Query historical trends for quarterly growth reports using a data catalog
 - Archive reports after a year.
 
 ### Match requirements to services
@@ -109,7 +111,7 @@ Which serverless solution meets the requirements with the **least operational ov
     <tr><td>Current dashboard stats</td><td>DynamoDB, served through API Gateway</td></tr>
     <tr><td>Infrequently queried history</td><td>S3 Standard-IA</td></tr>
     <tr><td>Archive after one year</td><td>S3 Lifecycle transition to Glacier Deep Archive</td></tr>
-    <tr><td>Table metadata</td><td>Glue Data Catalog</td></tr>
+    <tr><td>Data catalog</td><td>Glue Data Catalog</td></tr>
     <tr><td>Historical SQL analysis</td><td>Athena</td></tr>
   </tbody>
 </table>
