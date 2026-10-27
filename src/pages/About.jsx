@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import experience from '../data/experience';
 import posts from './blog/posts';
 import PostCard from '../components/PostCard';
+import RoleTools from '../components/RoleTools';
 
 const heroSlides = [
   {
@@ -155,20 +156,27 @@ export default function About() {
               </summary>
               <div className="employer-roles">
                 {group.roles.map((role, roleIndex) => (
-                  <details className="role" key={`${group.employer}-${role.title}`} open={groupIndex === 0 && roleIndex === 0}>
-                    <summary className="role-summary">
-                      <span className="role-title">{role.title}</span>
-                      <time dateTime={role.dateTime}>{role.date}</time>
-                    </summary>
-                    <div className="role-content">
-                      <p className="role-company">{role.company.split(' · ').slice(1).join(' · ') || role.company}</p>
-                      <ul>
-                        {role.bullets.map((bullet, j) => (
-                          <li key={j}>{bullet}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </details>
+                  <div className="role-entry" key={`${group.employer}-${role.title}`}>
+                    <details className="role" name="experience-jobs" open={groupIndex === 0 && roleIndex === 0}>
+                      <summary className="role-summary">
+                        <span className="role-title">{role.title}</span>
+                        <span className="role-meta">
+                          <time dateTime={role.dateTime}>{role.date}</time>
+                          {role.location && <span className="role-location">{role.location}</span>}
+                          {role.workArrangement && <span className="role-arrangement">{role.workArrangement}</span>}
+                        </span>
+                      </summary>
+                      <div className="role-content">
+                        <p className="role-company">{role.company.split(' · ').slice(1).join(' · ') || role.company}</p>
+                        <RoleTools tools={role.tools} />
+                        <ul>
+                          {role.bullets.map((bullet, j) => (
+                            <li key={j}>{bullet}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </details>
+                  </div>
                 ))}
               </div>
             </details>
