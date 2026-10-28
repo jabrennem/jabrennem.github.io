@@ -81,7 +81,7 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 
 .section { border-top: 1px solid var(--border); padding: var(--section-space) 0; }
 .section .eyebrow { font-size: 0.84rem; }
-.featured-projects-section { padding: var(--section-space) 0; }
+.section.featured-projects-section { padding: var(--section-space) 0 0.5rem; }
 .featured-projects-section .section-heading { display: block; margin-bottom: 1.25rem; text-align: center; }
 .featured-projects-section .section-heading > p:last-child { margin-top: 0.45rem; }
 .section#experience .section-heading { display: block; text-align: center; }
@@ -98,8 +98,8 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .employer-group::before { background: var(--accent); border-radius: 50%; box-shadow: 0 0 0 4px var(--bg); content: ""; height: 0.7rem; left: calc(0.15rem - 0.35rem + 0.5px); position: absolute; top: 0.7rem; width: 0.7rem; z-index: 1; }
 .employer-group:not(:last-child)::after { background: var(--border); bottom: -1.05rem; content: ""; left: 0.15rem; position: absolute; top: 1.05rem; width: 1px; }
 .employer-group:last-child { padding-bottom: 0; }
-.employer-summary { align-items: baseline; border: 1px solid transparent; border-radius: 0.4rem; cursor: pointer; display: flex; gap: 0.4rem 1rem; justify-content: space-between; list-style: none; padding: 0.35rem 0.5rem; transition: background-color 160ms ease, border-color 160ms ease; }
-.employer-summary:hover { background: var(--surface-soft); border-color: var(--accent); }
+.employer-summary { align-items: baseline; border: 1px solid transparent; border-radius: 0.4rem; cursor: pointer; display: flex; gap: 0.4rem 1rem; justify-content: space-between; list-style: none; padding: 0.35rem 0.5rem; transition: background-color 160ms ease; }
+.employer-summary:hover { background: var(--surface-soft); }
 .employer-summary::-webkit-details-marker { display: none; }
 .employer-summary:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 .employer-summary::after { color: var(--accent); content: "+"; font-size: 1.3rem; line-height: 1; margin-left: 0.5rem; }
@@ -108,8 +108,8 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .employer-roles { margin: 1rem 0 0; padding-left: 0.4rem; }
 .role-entry { margin-bottom: 1.5rem; position: relative; }
 .role-entry:last-child { margin-bottom: 0; }
-.role { border-radius: 0.5rem; outline: 1px solid transparent; outline-offset: 0; position: relative; transition: outline-color 160ms ease; }
-.role:hover { outline-color: var(--accent); }
+.role { border-radius: 0.5rem; outline-offset: 0; position: relative; }
+.role[open] { outline: 1px solid var(--accent); }
 .role:has(> .role-summary:focus-visible) { outline: 2px solid var(--accent-strong); }
 .role::before { display: none; }
 .role-summary { border: 1px solid transparent; border-radius: 0.4rem; cursor: pointer; display: grid; gap: 0.45rem; list-style: none; padding: 0.5rem 2rem 0.5rem 0.5rem; position: relative; transition: background-color 160ms ease, border-color 160ms ease; }

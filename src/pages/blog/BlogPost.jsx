@@ -26,7 +26,7 @@ export default function BlogPost() {
           <span aria-current="page">{post.title}</span>
         </nav>
         <div className="page-intro">
-          <p className="eyebrow">{post.status}</p>
+          {post.status && <p className="eyebrow">{post.status}</p>}
           <h1>{post.title}</h1>
         </div>
         <post.Component />
@@ -46,7 +46,7 @@ export default function BlogPost() {
         <span aria-current="page">{post.title}</span>
       </nav>
       <div className="page-intro">
-        <p className="eyebrow">Working draft · {post.status}</p>
+        <p className="eyebrow">Working draft{post.status && ` · ${post.status}`}</p>
         <h1>{post.title}</h1>
         <p>{post.description}</p>
         {post.repoUrl && (

@@ -94,6 +94,22 @@ const experience = [
     ],
   },
   {
+    title: 'Freelance Music Producer / Audio Engineer',
+    date: '2024 - Present',
+    dateTime: '2024',
+    workArrangement: 'Remote',
+    company: 'Joshua Brenneman · Freelance',
+    tools: [
+      { name: 'Logic Pro' },
+      { name: 'Audio Mixing/Mastering' },
+      { name: 'Music Production' },
+      { name: 'Audio Editing' },
+    ],
+    bullets: [
+      'Produce, edit, mix, and master music for bands as paid freelance client work.',
+    ],
+  },
+  {
     title: 'Big Data Application Developer',
     date: 'Jun 2016 - Oct 2017',
     dateTime: '2016-06',

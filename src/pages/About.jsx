@@ -74,8 +74,8 @@ export default function About() {
           <p className="hero-copy">A decade of building and pushing myself creatively.</p>
           <p className="supporting-copy">
             I've spent most of my career helping researchers solve complex problems in genomics, scientific computing,
-            and machine learning. I would like to bring that same rigor and curiosity to AI and creative technologies too. Outside
-            of work, I produce music because it gives me another way to express myself and create something from scratch.
+            and machine learning. Outside of work, I write and produce music because it gives me another way to express myself
+            and create something from scratch. I'm also using C++ to build audio tools, and I look forward to sharing more soon.
           </p>
           <div className="actions">
             <div className="action-buttons">

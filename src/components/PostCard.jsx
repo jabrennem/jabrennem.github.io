@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 export default function PostCard({ post, compact = false }) {
   return (
     <Link className={`post-card${compact ? ' post-card--compact' : ''}`} to={`/blog/${post.slug}`}>
-      <p className="status">{post.status}</p>
+      {post.status && <p className="status">{post.status}</p>}
       <h2>{post.title}</h2>
       <p>{post.description}</p>
       {post.Thumbnail && (

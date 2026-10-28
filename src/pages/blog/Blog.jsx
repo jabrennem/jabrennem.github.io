@@ -29,9 +29,9 @@ export default function Blog() {
         </p>
       </div>
 
-      <section className="section" aria-labelledby="writing-series-heading">
+      <section className="section" aria-labelledby="posts-heading">
         <div className="section-heading">
-          <p className="eyebrow" id="writing-series-heading">Upcoming series</p>
+          <p className="eyebrow" id="posts-heading">Posts</p>
         </div>
 
         <div className="article-tools">
