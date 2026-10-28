@@ -26,6 +26,16 @@
       "sameAs": ["https://github.com/jabrennem", "https://www.linkedin.com/in/joshuabrennemana/"]
     }
   </script>
+  <script>
+    window.goatcounter = {
+      // HashRouter routes are page paths; section anchors and queries are not.
+      path: function () {
+        return location.hash.slice(1).split(/[?#]/)[0] || location.pathname;
+      }
+    };
+  </script>
+  <script data-goatcounter="https://jabrennem.goatcounter.com/count"
+          async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body>
   <div id="root"></div>

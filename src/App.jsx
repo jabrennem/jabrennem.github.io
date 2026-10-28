@@ -1,10 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import About from './pages/About';
 // import Music from './pages/Music';
 import Blog from './pages/blog/Blog';
 import BlogPost from './pages/blog/BlogPost';
+
+function TrackPageViews() {
+  const { pathname } = useLocation();
+  const previousPath = useRef(pathname);
+
+  useEffect(() => {
+    // count.js handles the initial visit, including when it loads asynchronously.
+    if (previousPath.current === pathname) return;
+    previousPath.current = pathname;
+    window.goatcounter?.count?.();
+  }, [pathname]);
+
+  return null;
+}
 
 function ScrollToHash() {
   const { hash, pathname } = useLocation();
@@ -24,6 +38,7 @@ function ScrollToHash() {
 export default function App() {
   return (
     <>
+      <TrackPageViews />
       <ScrollToHash />
       <Routes>
         <Route element={<Layout />}>

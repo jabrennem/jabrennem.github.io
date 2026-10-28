@@ -27,6 +27,14 @@ Pushes to `main` trigger the GitHub Actions workflow (`.github/workflows/deploy.
 
 Make sure your repo's Pages source is set to **GitHub Actions** (Settings → Pages → Source).
 
+## Analytics
+
+GoatCounter tracks pageviews at https://jabrennem.goatcounter.com/. The script in
+`index.html` counts the initial visit, and `TrackPageViews` in `src/App.jsx` counts
+subsequent route changes. HashRouter paths are reported as `/`, `/blog`, and
+`/blog/<slug>`; section anchors and query strings are excluded. GoatCounter's
+default filtering excludes localhost visits.
+
 ## Project structure
 
 ```
