@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import posts from './posts';
+import RecommendedPosts from '../../components/RecommendedPosts';
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -30,6 +31,7 @@ export default function BlogPost() {
           <h1>{post.title}</h1>
         </div>
         <post.Component />
+        <RecommendedPosts currentPost={post} />
         <p>
           <Link className="text-link" to="/blog">← All build notes</Link>
         </p>
@@ -65,6 +67,7 @@ export default function BlogPost() {
           ))}
         </ol>
       </section>
+      <RecommendedPosts currentPost={post} />
       <p>
         <Link className="text-link" to="/blog">← All build notes</Link>
       </p>

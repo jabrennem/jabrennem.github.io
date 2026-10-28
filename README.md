@@ -21,6 +21,17 @@ npm run build
 
 Output goes to `dist/`.
 
+## Blog recommendations
+
+Each post ends with up to three recommended posts, ranked by the number of shared
+keywords (case-insensitive, separated by `·`). Ties use the newest `date` first;
+missing or invalid dates sort last within the same score. Posts with no shared
+keywords can fill remaining slots. Add a quoted ISO publication `date`
+(`YYYY-MM-DD`) to new posts' frontmatter. Existing dates reflect their first
+publication in Git history.
+
+Run the recommendation tests with `node --test src/pages/blog/recommendPosts.test.js`.
+
 ## Deployment
 
 Pushes to `main` trigger the GitHub Actions workflow (`.github/workflows/deploy.yml`), which builds the site and deploys to GitHub Pages.
