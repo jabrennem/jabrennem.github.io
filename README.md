@@ -35,7 +35,7 @@ src/
   data/         Site content as JS objects
   pages/        Route-level page components
   style.css     Global styles
-public/         Static assets (images, resume, favicon)
+public/         Static assets (images, favicon)
 ```
 
 ## Stack

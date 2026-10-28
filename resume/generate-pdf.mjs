@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const inputPath = resolve(__dirname, 'resume.html');
-const outputPath = resolve(__dirname, '../public/assets/Joshua-Brenneman-Resume.pdf');
+const outputPath = resolve(__dirname, 'Joshua-Brenneman-Resume.pdf');
 
 const browser = await puppeteer.launch({ headless: 'new' });
 const page = await browser.newPage();

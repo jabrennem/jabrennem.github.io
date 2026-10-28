@@ -82,9 +82,6 @@ export default function About() {
               <Link className="button primary" to="/blog">
                 Read my blog <span aria-hidden="true">→</span>
               </Link>
-              <a className="button secondary resume-download" href="/assets/Joshua-Brenneman-Resume.pdf" download>
-                Download résumé <span aria-hidden="true">↓</span>
-              </a>
             </div>
             <div className="social-links" aria-label="Social and contact links">
               <a className="icon-link" href="https://github.com/jabrennem" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
