@@ -187,6 +187,20 @@ export default function About() {
           <div className="certification-grid">
             <a
               className="certification-badge"
+              href="https://www.credly.com/badges/c02d44b1-3a0b-4227-823f-544ffb502f71/public_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="AWS Certified AI Practitioner on Credly"
+            >
+              <span className="certification-badge-mark" aria-hidden="true">AWS</span>
+              <span className="certification-badge-copy">
+                <span className="certification-badge-type">Certified</span>
+                <span className="certification-badge-name">AI Practitioner (AIF-C01)</span>
+              </span>
+              <span className="certification-badge-link">Issued 2026<br />Verify on Credly ↗</span>
+            </a>
+            <a
+              className="certification-badge"
               href="https://www.credly.com/badges/648407ba-27fe-440f-af8d-04987c020fd5/public_url"
               target="_blank"
               rel="noopener noreferrer"
