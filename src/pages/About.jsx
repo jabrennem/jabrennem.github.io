@@ -7,14 +7,14 @@ import RoleTools from '../components/RoleTools';
 
 const heroSlides = [
   {
-    src: '/assets/media/josh-live-blue.jpg',
-    alt: 'Joshua playing guitar onstage under blue stage light',
-    caption: 'On stage promo with my Strandberg Boden',
-  },
-  {
     src: '/assets/media/tensor-crowd-shot.jpg',
     alt: 'A crowd watching Tensor perform live',
     caption: 'My project "Tensor"',
+  },
+  {
+    src: '/assets/media/josh-live-blue.jpg',
+    alt: 'Joshua playing guitar onstage under blue stage light',
+    caption: 'On stage promo with my Strandberg Boden',
   },
   {
     src: '/assets/media/tensor-bts-guitar.jpg',
@@ -154,7 +154,7 @@ export default function About() {
               <div className="employer-roles">
                 {group.roles.map((role, roleIndex) => (
                   <div className="role-entry" key={`${group.employer}-${role.title}`}>
-                    <details className="role" name="experience-jobs" open={groupIndex === 0 && roleIndex === 0}>
+                    <details className="role" name="experience-jobs">
                       <summary className="role-summary">
                         <span className="role-title">{role.title}</span>
                         <span className="role-meta">
@@ -244,7 +244,7 @@ export default function About() {
         <div className="spotify-embed">
           <iframe
             title="Joshua Brenneman audio production playlist on Spotify"
-            src="https://open.spotify.com/embed/playlist/2ZA5D6NJ5HQanMRfAfX8zQ?utm_source=generator&amp;si=1472ec09bbaf4aad"
+            src="https://open.spotify.com/embed/playlist/2ZA5D6NJ5HQanMRfAfX8zQ?utm_source=generator&theme=0&si=733ee5879a0646c7"
             width="100%"
             height="460"
             frameBorder="0"
