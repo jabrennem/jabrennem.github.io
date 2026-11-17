@@ -29,6 +29,8 @@ export default function BlogPost() {
         <div className="page-intro">
           {post.status && <p className="eyebrow">{post.status}</p>}
           <h1>{post.title}</h1>
+          {post.date && <p className="post-published">Published <time dateTime={post.date}>{new Date(`${post.date}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</time></p>}
+          {post.description && <p>{post.description}</p>}
         </div>
         <post.Component />
         <RecommendedPosts currentPost={post} />

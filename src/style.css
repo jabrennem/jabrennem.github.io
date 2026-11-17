@@ -206,17 +206,15 @@ h2 { font-size: 1.15rem; letter-spacing: -0.025em; line-height: 1.25; margin-bot
 .post-card:hover { border-color: var(--accent); color: inherit; transform: translateY(-2px); }
 .post-card:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
 .post-card h2 { font-size: clamp(1.4rem, 2.5vw, 2rem); }
+.post-published { color: var(--subtle); font-size: 0.88rem; margin: -0.45rem 0 0.9rem; }
 .post-card--compact { max-width: 320px; padding: 1.25rem 1.4rem; }
 .post-card--compact .status { margin-bottom: 0.55rem; }
 .post-card--compact h2 { font-size: clamp(1.15rem, 1.8vw, 1.4rem); margin-bottom: 0.55rem; }
 .post-card--compact > p:not(.status) { display: -webkit-box; font-size: 0.9rem; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .post-card--compact .post-card-thumbnail { margin-top: 0.8rem; max-height: 4rem; overflow: hidden; }
-.post-card--compact .post-keywords { margin-top: 0.9rem; padding-top: 0.75rem; }
 .post-card > p:not(.status), .post-outline { color: var(--muted); max-width: 670px; }
 .post-outline { margin: 1.25rem 0 0; padding-left: 1.25rem; }
 .post-outline li + li { margin-top: 0.35rem; }
-.post-keywords { border-top: 1px solid var(--border); color: var(--subtle); font-size: 0.82rem; margin: 1.35rem 0 0; padding-top: 1rem; }
-.post-keywords span { color: var(--accent); font-weight: 700; margin-right: 0.45rem; text-transform: uppercase; }
 .post-card-thumbnail { margin: 1.25rem 0 0; opacity: 0.85; pointer-events: none; }
 .post-card-thumbnail .architecture-diagram { margin: 0; overflow: hidden; padding-right: 0.75rem; }
 .post-card-thumbnail .architecture-diagram svg { min-width: 0; }
