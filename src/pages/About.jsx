@@ -71,7 +71,6 @@ export default function About() {
         <div className="hero-content">
           <p className="eyebrow">Data Architect · AWS Cloud &amp; Data Platforms</p>
           <h1>Joshua Brenneman</h1>
-          <p className="hero-copy">A decade of building and pushing myself creatively.</p>
           <p className="supporting-copy">
             I've spent most of my career helping researchers solve complex problems in genomics, scientific computing,
             and machine learning. Outside of work, I write and produce music because it gives me another way to express myself
