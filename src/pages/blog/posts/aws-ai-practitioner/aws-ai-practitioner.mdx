@@ -1,0 +1,134 @@
+---
+slug: aws-ai-practitioner
+visibility: unlisted
+title: "AWS AI Practitioner: Putting years of AI experience to the test"
+description: "What the AWS Certified AI Practitioner exam confirmed about the foundations I'd built over the years, what the test was like, and who I'd recommend it to."
+keywords: "AWS Certification · AIF-C01 · Machine Learning · Responsible AI · Amazon Transcribe"
+search: aws certification certified ai practitioner aif-c01 foundational exam machine learning deep learning lifecycle responsible ai fairness transparency governance amazon transcribe speech to text
+outline:
+  - How I prepared
+  - What surprised me about the exam
+  - What the exam focused on
+  - What I took away
+  - Who I'd recommend it to
+---
+
+import { Link } from 'react-router-dom';
+
+export const Thumbnail = () => (
+  <div className="aws-credential aws-credential--thumbnail">
+    <img src="/assets/media/aws-ai-practitioner-foundation/badge.png" width="2286" height="1396" alt="AWS Certified AI Practitioner badge" />
+    <div>
+      <p className="eyebrow">AWS Certification · AIF-C01</p>
+      <p className="aws-credential-title">AI Practitioner</p>
+      <p className="aws-credential-caption">A check on the AI foundations I'd built over the years.</p>
+    </div>
+  </div>
+);
+
+<a className="aws-credential" href="https://www.credly.com/badges/c02d44b1-3a0b-4227-823f-544ffb502f71/public_url" target="_blank" rel="noopener noreferrer">
+  <img src="/assets/media/aws-ai-practitioner-foundation/badge.png" width="2286" height="1396" alt="AWS Certified AI Practitioner badge" />
+  <div>
+    <p className="eyebrow">AWS Certification · AIF-C01</p>
+    <p className="aws-credential-title">AI Practitioner</p>
+    <span className="aws-credential-verify">Verify my credential on Credly ↗</span>
+  </div>
+</a>
+
+I recently earned the **AWS Certified AI Practitioner** certification. I've been following and working
+with AI and machine learning (ML) on and off for about ten years even though I don't have a formal background
+in the field.
+
+One of my earliest memories with ML is downloading a [Word2Vec](https://en.wikipedia.org/wiki/Word2Vec) model in 2016, trying it on my own computer. I remember 
+seeing that the difference between the vectors for *king* and *queen* was similar to the difference between 
+the vectors for *man* and *woman*. That hooked my inner linguistics nerd. I was astonished that a model could 
+learn relationships between words from the contexts in which they appear across a large collection of text. 
+It would be a couple years before the rise of large language models, but I was already fascinated by the 
+idea of it.
+
+My professional AI work has focused primarily on MLOps and application development. I've prepared training data 
+and deployed Dockerized models for inference on AWS Lambda and SageMaker. I've also partnered with bioinformatics 
+teams to package their models in Docker and run them on AWS Batch. More recently, I've built agent infrastructure 
+with Amazon Bedrock AgentCore and the Strands Agents SDK, connecting agents to internal systems and third-party APIs.
+
+I have had an unconventional path into AI. I've built my understanding over time through curiosity and collaborative 
+project work. I took the certification exam to see how well those foundations held up. Earning the credential felt 
+like a satisfying milestone in a field I've been curious about for years. If you've taken the exam after learning 
+AI through a similarly nontraditional path, feel free to reach out to me by email or on social media. If you're 
+thinking about taking it, I explain below what you can expect.
+
+<nav className="table-of-contents" aria-label="Table of contents">
+  <p className="eyebrow">On this page</p>
+  <ol>
+    <li><Link to="#how-i-prepared">How I prepared</Link></li>
+    <li><Link to="#what-surprised-me">What surprised me about the exam</Link></li>
+    <li><Link to="#what-the-exam-focused-on">What the exam focused on</Link></li>
+    <li><Link to="#what-i-took-away">What I took away</Link></li>
+    <li><Link to="#who-id-recommend-it-to">Who I'd recommend it to</Link></li>
+  </ol>
+</nav>
+
+<h2 id="how-i-prepared">How I prepared</h2>
+
+### Study resources
+
+- **[Udemy course](https://www.udemy.com/course/aws-certified-ai-practitioner/)** by Stéphane Maarek.
+- **[Tutorials Dojo practice exams](https://portal.tutorialsdojo.com/courses/aws-certified-ai-practitioner-practice-exams-aif-c01/)**.
+
+I chose these because they were taught by instructors who helped me pass the [Data Engineer Associate exam](/blog/aws-data-engineer-associate).
+
+### My study sequence
+
+1. Took the Udemy section quizzes to see which sections I needed to focus on the most.
+2. Watched the Udemy course videos for a week at 1.5x speed. Taking notes with pencil and paper.
+3. Took the Tutorial Dojo section-based practice exams in practice mode, reviewing each question and taking notes on the ones I got wrong.
+
+Fortunately, I was getting passing scores on the Udemy and Tutorial Dojo section quizzes, so I didn't finish all the 
+material. I focused on the sections I was less familiar with, like corporate paradigms for **Responsible AI** and 
+**Amazon Managed Services for AI**.
+
+<h2 id="what-surprised-me">What surprised me about the exam</h2>
+
+For the [Data Engineer Associate exam](/blog/aws-data-engineer-associate), I became familiar with the scenario based 
+formula question format. It involved reading a scenario, picking out the constraints, and working through the tradeoffs. 
+
+On this exam, I saw more matching questions and straightforward questions that asked me to recall a definition. I'd 
+read a simple question and start looking for a catch, then talk myself out of the answer I'd recognized right away. 
+I had to remind myself that some questions were coming from a manager or sales perspective. They were asking what AI 
+could do at a high level, not how I'd build it behind the scenes. Once I reframed the question that way, it was 
+easier to trust the answer I recognized.
+
+<h2 id="what-the-exam-focused-on">What the exam focused on</h2>
+
+### Machine learning and AWS services
+
+I had to recognize the basic machine learning approaches and the kinds of data they use. There were also questions about where training, evaluation, deployment, and monitoring fit in the model lifecycle. For AWS services, the key was matching the service to the task. For example, **Amazon Transcribe** turns a recording into text.
+
+### Responsible AI
+
+Fairness, transparency, and governance came up often too. The questions made me think about what a team needs to decide before putting a model to use:
+
+- How will we check whether the model performs worse for some groups?
+- What will we tell people about how the model is being used?
+- Who's responsible for following up if we find bias?
+
+Those answers can affect how the team collects data, evaluates the model, and decides where to use it, so it's better to think them through early.
+
+<h2 id="what-i-took-away">What I took away</h2>
+
+Passing the exam confirmed that the foundations I'd built over the years had stuck.
+Studying also refreshed the vocabulary I'd use in a meeting with business stakeholders,
+developers, or data scientists. I can talk through what we're trying to solve, what data we'd need,
+and how we'd know whether a model was doing its job without getting deep into the implementation.
+
+There's a whole science behind choosing and training a model. I think of it like working on an engine.
+Once you're the mechanic, you need to know how the parts fit together and what to check when
+something goes wrong. I'm curious how much further the **Machine Learning Engineer – Associate**
+exam goes into that work. I guess I'll have to grab that one next. :)
+
+<h2 id="who-id-recommend-it-to">Who I'd recommend it to</h2>
+
+- **If you're new to AI**, I'd recommend it if you want to feel more comfortable with the terms
+  that come up in conversations about models and how they're used.
+- **If you've learned AI through project work**, it's a chance to check how well you can explain
+  the concepts behind what you've been doing and refresh the ones you use less often.

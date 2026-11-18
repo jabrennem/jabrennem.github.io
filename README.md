@@ -30,6 +30,13 @@ keywords can fill remaining slots. Add a quoted ISO publication `date`
 (`YYYY-MM-DD`) to new posts' frontmatter. Existing dates reflect their first
 publication in Git history.
 
+Set a post's frontmatter `visibility` to `public`, `unlisted`, or `private`.
+Public posts appear in the blog and recommendations. Unlisted posts are
+deployed and reachable by direct URL, but do not appear in listings or
+recommendations. Private posts are excluded from the app's module graph, so
+their MDX content is not included in local or production site builds. GitHub
+Pages cannot protect static pages with authentication.
+
 Run the recommendation tests with `node --test src/pages/blog/recommendPosts.test.js`.
 
 ## Deployment

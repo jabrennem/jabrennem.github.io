@@ -1,9 +1,9 @@
 import PostCard from './PostCard';
-import posts from '../pages/blog/posts';
+import { publicPosts } from '../pages/blog/posts';
 import recommendPosts from '../pages/blog/recommendPosts';
 
 export default function RecommendedPosts({ currentPost }) {
-  const recommendations = recommendPosts(currentPost, posts);
+  const recommendations = recommendPosts(currentPost, publicPosts);
 
   if (!recommendations.length) return null;
 

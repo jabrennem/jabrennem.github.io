@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import posts from './posts';
+import { publicPosts } from './posts';
 import PostCard from '../../components/PostCard';
 
 const POSTS_PER_PAGE = 10;
@@ -10,8 +10,8 @@ export default function Blog() {
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return posts;
-    return posts.filter((p) => p.search.includes(q));
+    if (!q) return publicPosts;
+    return publicPosts.filter((p) => p.search.includes(q));
   }, [query]);
 
   const pageCount = Math.max(1, Math.ceil(matches.length / POSTS_PER_PAGE));

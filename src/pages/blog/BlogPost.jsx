@@ -20,7 +20,7 @@ export default function BlogPost() {
   // If the post has full MDX content, render it
   if (post.Component) {
     return (
-      <article className="blog-article">
+      <article className={`blog-article blog-article--${post.slug}`}>
         <nav className="breadcrumb" aria-label="Breadcrumb">
           <Link to="/blog">Blog</Link>
           <span aria-hidden="true">/</span>
@@ -32,7 +32,9 @@ export default function BlogPost() {
           {post.date && <p className="post-published">Published <time dateTime={post.date}>{new Date(`${post.date}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</time></p>}
           {post.description && <p>{post.description}</p>}
         </div>
-        <post.Component />
+        <div className="blog-content">
+          <post.Component />
+        </div>
         <RecommendedPosts currentPost={post} />
         <p>
           <Link className="text-link" to="/blog">← All build notes</Link>
