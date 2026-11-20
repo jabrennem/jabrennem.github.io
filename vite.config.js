@@ -6,10 +6,17 @@ import mdx from '@mdx-js/rollup';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import rehypePrettyCode from 'rehype-pretty-code';
+import { parse } from 'yaml';
 
 const postsDirectory = path.resolve('src/pages/blog/posts');
 const virtualPostsId = 'virtual:blog-posts';
 const resolvedVirtualPostsId = `\0${virtualPostsId}`;
+const siteOrigin = 'https://jabrennem.github.io';
+const defaultShareImage = '/assets/media/blog-share/blog.png';
+const blogPage = {
+  title: 'Blog | Joshua Brenneman',
+  description: 'Build notes about AWS data platforms, engineering, and AI by Joshua Brenneman.',
+};
 
 function getMdxFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -19,19 +26,70 @@ function getMdxFiles(directory) {
   });
 }
 
-function getVisibility(file) {
+function getPostFrontmatter(file) {
   const source = readFileSync(file, 'utf8');
   const frontmatter = source.match(/^---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1] || '';
-  const rawVisibility = frontmatter.match(/^visibility\s*:\s*(.*?)\s*(?:#.*)?$/m)?.[1]
-    ?.trim()
-    .replace(/^(['"])(.*)\1$/, '$2');
-  const visibility = rawVisibility || 'public';
+  const metadata = parse(frontmatter) || {};
+  const visibility = metadata.visibility || 'public';
 
   if (!['public', 'unlisted', 'private'].includes(visibility)) {
     throw new Error(`Invalid visibility "${visibility}" in ${path.relative(process.cwd(), file)}. Use public, unlisted, or private.`);
   }
 
-  return visibility;
+  return { ...metadata, visibility };
+}
+
+function escapeHtml(value) {
+  return String(value).replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+function blogPageHtml(shell, route, page, type) {
+  const title = escapeHtml(page.title);
+  const description = escapeHtml(page.description);
+  const url = escapeHtml(new URL(`/${route}/`, siteOrigin).href);
+  const image = escapeHtml(new URL(page.shareImage || defaultShareImage, siteOrigin).href);
+
+  return shell.replace(/<!-- page metadata -->[\s\S]*?<!-- \/page metadata -->/, () => [
+    `<title>${title}</title>`,
+    `<meta name="description" content="${description}" />`,
+    `<link rel="canonical" href="${url}" />`,
+    `<meta property="og:type" content="${type}" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
+    `<meta property="og:url" content="${url}" />`,
+    `<meta property="og:image" content="${image}" />`,
+    '<meta name="twitter:card" content="summary_large_image" />',
+  ].join('\n  '));
+}
+
+function blogPagesPlugin() {
+  return {
+    name: 'blog-share-pages',
+    apply: 'build',
+    generateBundle: {
+      order: 'post',
+      handler(_, bundle) {
+        const shell = bundle['index.html'].source;
+        const emitPage = (route, page, type) => {
+          this.emitFile({
+            type: 'asset',
+            fileName: `${route}/index.html`,
+            source: blogPageHtml(shell, route, page, type),
+          });
+        };
+
+        emitPage('blog', blogPage, 'website');
+        for (const file of getMdxFiles(postsDirectory)) {
+          const post = getPostFrontmatter(file);
+          if (post.visibility === 'private') continue;
+          emitPage(`blog/${post.slug}`, post, 'article');
+        }
+      },
+    },
+  };
 }
 
 function blogPostsPlugin() {
@@ -60,7 +118,7 @@ function blogPostsPlugin() {
       const entries = [];
 
       files.forEach((file, index) => {
-        if (getVisibility(file) === 'private') return;
+        if (getPostFrontmatter(file).visibility === 'private') return;
         const importName = `post${index}`;
         imports.push(`import * as ${importName} from ${JSON.stringify(file.split(path.sep).join('/'))};`);
         entries.push(importName);
@@ -75,6 +133,7 @@ const posts = [${entries.join(', ')}].map((mod) => ({
   Thumbnail: mod.Thumbnail || null,
 }));
 export const publicPosts = posts.filter((post) => post.visibility === 'public');
+export const blogTitle = ${JSON.stringify(blogPage.title)};
 export default posts;
 `;
     },
@@ -96,6 +155,7 @@ export default posts;
 export default defineConfig({
   plugins: [
     blogPostsPlugin(),
+    blogPagesPlugin(),
     {
       enforce: 'pre',
       ...mdx({

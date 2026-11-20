@@ -5,6 +5,21 @@ import About from './pages/About';
 // import Music from './pages/Music';
 import Blog from './pages/blog/Blog';
 import BlogPost from './pages/blog/BlogPost';
+import posts, { blogTitle } from './pages/blog/posts';
+
+function UpdatePageTitle() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const route = pathname.replace(/\/$/, '');
+    const post = posts.find(({ slug }) => route === `/blog/${slug}`);
+    document.title = post?.title || (route === '/blog'
+      ? blogTitle
+      : 'Joshua Brenneman | Cloud, Engineering & Audio');
+  }, [pathname]);
+
+  return null;
+}
 
 function TrackPageViews() {
   const { pathname } = useLocation();
@@ -40,6 +55,7 @@ export default function App() {
     <>
       <TrackPageViews />
       <ScrollToHash />
+      <UpdatePageTitle />
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<About />} />

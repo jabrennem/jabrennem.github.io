@@ -21,6 +21,15 @@ npm run build
 
 Output goes to `dist/`.
 
+## Blog link previews
+
+The build generates a page with Open Graph metadata for each published post at
+`/blog/<slug>/`. Share that URL to use the post's title, description, and image.
+Set `shareImage` in the post's frontmatter to an image under
+`/assets/media/blog-share/`. Use a 1200 × 627 px image for LinkedIn. Posts
+without a `shareImage` use the default blog image. Existing `/#/blog/…` links
+still open in the browser.
+
 ## Blog recommendations
 
 Each post ends with up to three recommended posts, ranked by the number of shared
@@ -49,7 +58,7 @@ Make sure your repo's Pages source is set to **GitHub Actions** (Settings → Pa
 
 GoatCounter tracks pageviews at https://jabrennem.goatcounter.com/. The script in
 `index.html` counts the initial visit, and `TrackPageViews` in `src/App.jsx` counts
-subsequent route changes. HashRouter paths are reported as `/`, `/blog`, and
+subsequent route changes. Page paths are reported as `/`, `/blog`, and
 `/blog/<slug>`; section anchors and query strings are excluded. GoatCounter's
 default filtering excludes localhost visits.
 
@@ -67,6 +76,6 @@ public/         Static assets (images, favicon)
 ## Stack
 
 - React 18
-- React Router 6 (HashRouter)
+- React Router 6 (BrowserRouter)
 - Vite 5
 - GitHub Actions + GitHub Pages

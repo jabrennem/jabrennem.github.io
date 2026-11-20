@@ -1,1 +1,1 @@
-export { default, publicPosts } from 'virtual:blog-posts';
+export { default, publicPosts, blogTitle } from 'virtual:blog-posts';
