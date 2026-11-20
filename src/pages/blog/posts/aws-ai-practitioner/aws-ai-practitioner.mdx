@@ -1,6 +1,7 @@
 ---
 slug: aws-ai-practitioner
-visibility: unlisted
+visibility: public
+date: "2026-11-20"
 title: "AWS AI Practitioner: A first milestone in the AI world"
 description: "After years of exploring AI through self-study and collaborative projects at work, earning the AWS Certified AI Practitioner credential felt like a first milestone. Here's how I prepared and what I learned."
 keywords: "AWS Certification · AIF-C01 · Machine Learning · Responsible AI · Amazon Transcribe"
@@ -47,17 +48,17 @@ inner linguistics nerd. I was astonished that a model could learn relationships 
 context. This led me to explore early NLP tasks like sentiment analysis and entity recognition. It 
 would be a couple of years before the rise of large language models, but I was already fascinated by the idea of it.
 
-Since then, my professional experience in AI/ML has focused primarily on MLOps and application development. I've 
-prepared training data and deployed Dockerized models for inference on AWS Lambda and SageMaker. I've also partnered 
-with bioinformatics teams to package their models in Docker and run them on AWS Batch. More recently, I've built 
-agent infrastructure with Amazon Bedrock AgentCore and the Strands Agents SDK, connecting agents to internal systems 
-and third-party APIs.
+Since then, I've been able to collaborate at work on AI/ML projects in MLOps and application development. I've 
+contributed to projects that involved preparing training data and deploying models for inference on AWS Lambda and 
+SageMaker. I've worked with bioinformatics teams to package their models in Docker and run them on AWS Batch. More 
+recently, I've built agent infrastructure with Amazon Bedrock AgentCore and the Strands Agents SDK, connecting 
+agents to internal systems and third-party APIs.
 
-I have had an unconventional path into AI. I've built my understanding over time through curiosity and collaborative 
-project work. I took the certification exam to see how well those foundations held up. Passing the exam felt 
-like a satisfying milestone in a field I've been curious about for years. If you've taken the exam after learning 
-AI through a similarly nontraditional path, feel free to reach out to me by email or on social media. If you're 
-thinking about taking it, I explain below what you can expect.
+I have had an unconventional path into AI like most people. I've built my understanding over time through curiosity 
+and collaborative project work. I took the certification exam to see how well those foundations held up. Passing 
+the exam felt like a satisfying milestone in a field I've been curious about for years. If you've taken the exam 
+after learning AI through a similarly nontraditional path, feel free to reach out to me by email or on social 
+media. If you're thinking about taking it, I explain below what you can expect.
 
 <nav className="table-of-contents" aria-label="Table of contents">
   <p className="eyebrow">On this page</p>
@@ -75,34 +76,34 @@ thinking about taking it, I explain below what you can expect.
 
 These are questions a team might work through with an AI practitioner when evaluating an AI solution:
 
-**scenario** 
+**Scenario**
 
 A manager has an idea for an app that identifies common plants from photos people take on a walk.
 
-**algorithm** 
+**Algorithm**
 
-- computer vision
-- classification problem
-- supervised learning trained on labeled images
-- Do we train a model from scratch?
-- Do we use a pre-trained model?
-- Do we use AWS Rekognition?
+- Could we frame this as image classification and use supervised learning with labeled examples?
+- Would a pre-trained model work, or should we train or fine-tune one?
+- Would Amazon Rekognition fit this use case?
 
-**data**
-- images are unstructured data
-- users supply images to the app for real-time inference
-- What data are we training or fine-tuning the model on?
-- Does data contain personally identifiable information (PII)?
-- What are the risks of bias in the training data?
+**Data**
 
-**deployment**
-- What services do we use to deploy the model for inference?
-- How do we evaluate the model's performance?
-- What privacy and data-protection requirements apply, and how do we meet them?
+- Are the images unstructured data?
+- Will users submit images to the app for real-time inference?
+- What data will we use to train or fine-tune the model?
+- Could the images or their metadata contain personally identifiable information (PII)?
+- What risks of bias might be present in the training data?
 
-**security**
-- KMS encryption for training data in S3 buckets.
-- Security using IAM roles so the processes only have access to the data they need.
+**Deployment**
+
+- What services could we use to deploy the model for inference?
+- How will we evaluate the model’s performance?
+- What privacy and data-protection requirements apply, and how will we meet them?
+
+**Security**
+
+- How will we encrypt training data stored in S3 using KMS?
+- How can IAM roles limit each process to only the data it needs?
 
 <h2 id="how-i-prepared">How I prepared</h2>
 
